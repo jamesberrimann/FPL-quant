@@ -65,8 +65,6 @@
     localStorage.setItem('fpl_theme', next);
     updateThemeIcon();
   });
-  nav.appendChild(themeBtn);
-
   const keyBtn = document.createElement('button');
   keyBtn.className = 'key-btn';
   keyBtn.title = 'Click to set or update your API key';
@@ -82,7 +80,12 @@
     }
     refreshKeyBtn();
   });
-  nav.appendChild(keyBtn);
+
+  const controls = document.createElement('div');
+  controls.className = 'nav-controls';
+  controls.appendChild(themeBtn);
+  controls.appendChild(keyBtn);
+  nav.appendChild(controls);
 
   document.body.insertBefore(nav, document.body.firstChild);
 
