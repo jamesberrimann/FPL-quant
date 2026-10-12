@@ -18,9 +18,9 @@ POINTS_COST_PER_HIT = 4
 MAX_BANKED_TRANSFERS = 5
 
 # Gains below this are flagged as marginal when the manager could roll instead.
-# 3 pts ≈ expected value of an extra banked transfer next week; above this,
-# just make the transfer.
-MARGINAL_GAIN_THRESHOLD = 3.0
+# 6 pts ≈ realistic option value of a banked FT when timing conditions improve;
+# below this, rolling is almost always better than trading into a marginal upgrade.
+MARGINAL_GAIN_THRESHOLD = 6.0
 
 # FPL prices change when cumulative net transfers for a player cross roughly 1%
 # of total managers. We use this fraction as a same-GW proxy for direction.
@@ -28,8 +28,10 @@ _PRICE_MOVE_THRESHOLD_FRACTION = 0.01
 
 # A player is "hot form" if their 4-GW rolling average is at least this much
 # above their season average AND the absolute form is worth captaining.
+# Top 100 note: hot form is a regression-risk signal, not a buy signal.
+# Raise the bar so only genuinely exceptional runs qualify.
 _HOT_FORM_RATIO = 1.3   # 30% above season average
-_HOT_FORM_MIN   = 6.0   # minimum form value to qualify (avoids flagging poor players)
+_HOT_FORM_MIN   = 8.0   # raised from 6.0 — form ≥ 6 is common, not exceptional
 
 
 def is_hot_form(stats, gameweek: int) -> bool:
@@ -49,7 +51,7 @@ _MAX_COMBO_SIZE = 3
 # timing signal recommends waiting (next fixture significantly harder than
 # upcoming run). Suppresses marginal timing-bad transfers; large upgrades
 # still surface but with honest discounted improvement.
-_TIMING_DISCOUNT = 0.85
+_TIMING_DISCOUNT = 0.70
 
 
 def improvement_drivers(out_components: dict, in_components: dict) -> list[str]:
@@ -108,7 +110,7 @@ def _valid_combo(combo, bank, team_counts, min_improvement, cost_sensitivity):
 async def suggest_transfers(
     entry_id: int,
     free_transfers: int = 1,
-    min_score_improvement: float = 1.5,
+    min_score_improvement: float = 4.0,
     cost_sensitivity: float = 0.1,
 ):
     async with async_session_factory() as db:
@@ -282,7 +284,7 @@ async def suggest_transfers(
             in_ownership_pct = (
                 float(in_s.ownership_pct) if in_s.ownership_pct is not None else None
             )
-            is_differential = in_ownership_pct is not None and in_ownership_pct < 10.0
+            is_differential = in_ownership_pct is not None and in_ownership_pct < 5.0
 
             in_prev = prev_prices.get(in_p.id)
             out_prev = prev_prices.get(out_p.id)

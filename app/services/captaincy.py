@@ -132,7 +132,7 @@ async def pick_captain(starting_xi, gameweek: int):
     return max(captain_scored, key=lambda x: (x[2], CEILING_RANK[x[0].position]))
 
 
-_DIFFERENTIAL_OWNERSHIP_THRESHOLD = 15.0  # % — below this counts as differential
+_DIFFERENTIAL_OWNERSHIP_THRESHOLD = 5.0  # % — truly differential; 15% is just "not template"
 _DIFFERENTIAL_SCORE_FLOOR = 0.70          # must be ≥ 70% of top pick's ceiling
 
 
