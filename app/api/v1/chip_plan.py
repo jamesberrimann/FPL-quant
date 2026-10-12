@@ -4,7 +4,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import async_session_factory
-from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details
+from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details, get_entry_history
 from app.services.player_pool import get_latest_stats, filter_unavailable_players, filter_by_minimum_minutes
 from app.services.prediction import predict_points
 from app.services.fixtures import (
@@ -22,8 +22,10 @@ from app.schemas.chip_plan import (
 router = APIRouter()
 
 
-def _build_chip_availability(entry_data: dict) -> ChipAvailability:
-    chips = entry_data.get("chips", [])
+def _build_chip_availability(history_data: dict) -> ChipAvailability:
+    # Chips played live in /entry/{id}/history/ under the top-level "chips" key,
+    # not in /entry/{id}/ — fetching the wrong endpoint returns an empty list.
+    chips = history_data.get("chips", [])
     played_names = {c["name"] for c in chips}
     wc_events = [c["event"] for c in chips if c["name"] == "wildcard"]
     return ChipAvailability(
@@ -38,9 +40,9 @@ def _build_chip_availability(entry_data: dict) -> ChipAvailability:
 @router.get("/chip-plan", response_model=ChipPlanOut)
 async def chip_plan_route(entry_id: int = Query(...)):
     try:
-        data, entry_data = await asyncio.gather(
+        data, history_data = await asyncio.gather(
             get_bootstrap_static(),
-            get_entry_details(entry_id),
+            get_entry_history(entry_id),
         )
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
@@ -56,7 +58,7 @@ async def chip_plan_route(entry_id: int = Query(...)):
             raise HTTPException(status_code=404, detail="FPL entry not found")
         raise
 
-    chips_available = _build_chip_availability(entry_data)
+    chips_available = _build_chip_availability(history_data)
     my_element_ids = {pick["element"] for pick in picks_data["picks"]}
 
     async with async_session_factory() as db:
