@@ -176,13 +176,8 @@ nav {
 .nav-links {
   display: flex;
   align-items: center;
+  justify-content: space-around;
   flex: 1;
-}
-
-.nav-links a {
-  flex: 1;
-  text-align: center;
-  justify-content: center;
 }
 
 nav .brand {
