@@ -53,21 +53,34 @@ async def get_chip_windows(
     # has current-GW fixture ease baked in so we don't multiply by ease again.
     # Scan starts at current_gameweek + 1: TC is always a forward decision.
     top_scores = sorted(squad_players, key=lambda p: p.get("score", 0), reverse=True)
-    best_tc_gw = None
-    best_tc_key = (-1, 6.0)  # (count, -difficulty) — higher count and lower difficulty wins
-    best_tc_player = None
 
+    # For each of the top 5 players find their personal best GW (DGW > single; easier > harder).
+    # Then rank players by (is_dgw, player_score, fixture_ease) so the highest-scoring
+    # player wins when fixture count is equal — player score is what TC multiplies.
+    player_best: dict[str, dict] = {}
     for gw in range(current_gameweek + 1, _MAX_SEASON_GW + 1):
         for p in top_scores[:5]:
             info = fixture_info_by_gw[gw].get(p["team_id"], {"count": 0.0, "difficulty": 3.0})
             count = info["count"]
             if count == 0.0:
                 continue
-            key = (count, -info["difficulty"])  # higher count first, then easier fixture
-            if key > best_tc_key or best_tc_gw is None:
-                best_tc_key = key
-                best_tc_gw = gw
-                best_tc_player = p
+            name = p.get("web_name", "")
+            existing = player_best.get(name)
+            if existing is None or (count, -info["difficulty"]) > (existing["count"], -existing["difficulty"]):
+                player_best[name] = {
+                    "player": p,
+                    "gw": gw,
+                    "count": count,
+                    "difficulty": info["difficulty"],
+                }
+
+    best_entry = max(
+        player_best.values(),
+        key=lambda x: (x["count"] >= 2.0, x["player"].get("score", 0), -x["difficulty"]),
+        default=None,
+    )
+    best_tc_gw = best_entry["gw"] if best_entry else None
+    best_tc_player = best_entry["player"] if best_entry else None
 
     triple_captain = None
     if best_tc_gw is not None and best_tc_player is not None:
