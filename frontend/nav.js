@@ -9,7 +9,6 @@
   const path = location.pathname;
 
   const links = [
-    { href: '/',                  label: 'Home' },
     { href: '/optimize.html',     label: 'Best Squad' },
     { href: '/rate-squad.html',   label: 'Rating' },
     { href: '/transfers.html',    label: 'Transfers' },
