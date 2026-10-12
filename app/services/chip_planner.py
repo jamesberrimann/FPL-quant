@@ -23,10 +23,10 @@ async def get_chip_windows(
           proxy for player quality when ranking TC candidates.
 
     Returns a dict with:
-        triple_captain: {gameweek, reason, best_player_name, best_player_score, is_dgw}
-        bench_boost:    {gameweek, reason, dgw_count}
-        free_hit:       list of {gameweek, blank_count, reason}
-        wildcard:       {gameweek, reason}
+        triple_captain: {gameweek, reason, best_player_name, best_player_score, is_dgw, candidates[]}
+        bench_boost:    {gameweek, reason, dgw_count, projected_squad_pts, dgw_player_names[]}
+        free_hit:       list of {gameweek, blank_count, reason, squad_projected_pts}
+        wildcard:       {gameweek, reason, wc_number}
     """
     if not squad_players:
         return {
@@ -74,6 +74,21 @@ async def get_chip_windows(
         count = fixture_info_by_gw[best_tc_gw].get(best_tc_player["team_id"], {}).get("count", 0.0)
         is_dgw = count >= 2.0
         name = best_tc_player.get("web_name", "")
+
+        # Build top 3 candidates: squad players from top_scores[:5] who have
+        # a fixture in the recommended TC GW, ranked by player score.
+        gw_mults = multipliers_by_gw[best_tc_gw]
+        candidates = []
+        for p in top_scores[:5]:
+            p_count = gw_mults.get(p["team_id"], 0.0)
+            if p_count > 0:
+                candidates.append({
+                    "player_name": p.get("web_name", ""),
+                    "player_score": round(p.get("score", 0), 1),
+                    "is_dgw": p_count >= 2.0,
+                })
+        candidates = candidates[:3]
+
         triple_captain = {
             "gameweek": best_tc_gw,
             "best_player_name": name,
@@ -84,6 +99,7 @@ async def get_chip_windows(
                 if is_dgw else
                 f"{name}'s best fixture of the season is in GW{best_tc_gw} — hold your chip for then."
             ),
+            "candidates": candidates,
         }
 
     # ── Bench Boost: GW in the season with the most DGW players in the squad.
@@ -111,14 +127,30 @@ async def get_chip_windows(
                 f"but is below the ideal threshold ({_BB_DGW_THRESHOLD}) — consider waiting "
                 "for a bigger DGW window or using it for a strong score week."
             )
+
+        # Project total squad pts for the BB GW: score × fixture_count_multiplier.
+        # DGW players contribute 2× their per-game score; BGW players contribute 0.
+        bb_mults = multipliers_by_gw[best_bb_gw]
+        projected_squad_pts = round(
+            sum(p.get("score", 0) * bb_mults.get(p["team_id"], 0.0) for p in squad_players),
+            1,
+        )
+        dgw_player_names = sorted(
+            p.get("web_name", "") for p in squad_players
+            if bb_mults.get(p["team_id"], 0.0) >= 2.0
+        )
+
         bench_boost = {
             "gameweek": best_bb_gw,
             "dgw_count": best_bb_dgw_count,
             "reason": reason,
+            "projected_squad_pts": projected_squad_pts,
+            "dgw_player_names": dgw_player_names,
         }
 
     # ── Free Hit: GWs where many of your players blank.
     # Guard against unscheduled GWs (all zeros in DB) being misread as blanks.
+    # Project current squad pts for each blank GW to show the cost of not using FH.
     free_hit_windows = []
     for gw in gw_range:
         mults = multipliers_by_gw[gw]
@@ -127,6 +159,11 @@ async def get_chip_windows(
             continue
         blank_count = sum(1 for p in squad_players if mults.get(p["team_id"], 0.0) == 0.0)
         if blank_count >= _FH_BLANK_THRESHOLD:
+            # Current squad pts for this GW: blankers score 0, others score their per-game score.
+            squad_projected_pts = round(
+                sum(p.get("score", 0) * mults.get(p["team_id"], 1.0) for p in squad_players),
+                1,
+            )
             free_hit_windows.append({
                 "gameweek": gw,
                 "blank_count": blank_count,
@@ -134,6 +171,7 @@ async def get_chip_windows(
                     f"GW{gw}: {blank_count} of your players have a blank — "
                     "Free Hit would let you field a full DGW squad instead."
                 ),
+                "squad_projected_pts": squad_projected_pts,
             })
 
     # ── Wildcard: GW before fixture difficulty spikes for the squad.
@@ -149,12 +187,14 @@ async def get_chip_windows(
         gw_now = gw_list[i]
         gw_next = gw_list[i + 1]
         if avg_mults[gw_now] > 0 and avg_mults[gw_next] < avg_mults[gw_now] * 0.75:
+            wc_number = 1 if gw_now <= 20 else 2
             wildcard = {
                 "gameweek": gw_now,
                 "reason": (
                     f"Fixture difficulty rises sharply after GW{gw_now} for your squad. "
                     f"Wildcarding in GW{gw_now} lets you bring in players with better upcoming runs."
                 ),
+                "wc_number": wc_number,
             }
             break
 

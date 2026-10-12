@@ -53,6 +53,7 @@
   --feat-transfers: #16a34a;
   --feat-lineup:    #d97706;
   --feat-fixtures:  #0891b2;
+  --feat-chips:     #9333ea;
 
   /* Badge palette tokens (overridden in dark mode) */
   --pos-gkp-bg:  #fef3c7; --pos-gkp-fg:  #92400e;

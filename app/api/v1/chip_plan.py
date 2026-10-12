@@ -1,29 +1,49 @@
+import asyncio
+
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import async_session_factory
-from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks
+from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details
 from app.services.player_pool import get_latest_stats
 from app.services.prediction import predict_points
 from app.services.fixtures import get_planning_gameweek
 from app.services.chip_planner import get_chip_windows
 from app.schemas.chip_plan import (
-    ChipPlanOut, TripleCaptainWindowOut, BenchBoostWindowOut,
-    FreeHitWindowOut, WildcardWindowOut,
+    ChipPlanOut, ChipAvailability,
+    TripleCaptainWindowOut, TCCandidate,
+    BenchBoostWindowOut, FreeHitWindowOut, WildcardWindowOut,
 )
 
 router = APIRouter()
 
 
+def _build_chip_availability(entry_data: dict) -> ChipAvailability:
+    chips = entry_data.get("chips", [])
+    played_names = {c["name"] for c in chips}
+    wc_events = [c["event"] for c in chips if c["name"] == "wildcard"]
+    return ChipAvailability(
+        triple_captain="3xc" not in played_names,
+        bench_boost="bboost" not in played_names,
+        free_hit="freehit" not in played_names,
+        wildcard1=not any(e <= 20 for e in wc_events),
+        wildcard2=not any(e > 20 for e in wc_events),
+    )
+
+
 @router.get("/chip-plan", response_model=ChipPlanOut)
 async def chip_plan_route(entry_id: int = Query(...)):
     try:
-        data = await get_bootstrap_static()
-    except httpx.HTTPStatusError:
+        data, entry_data = await asyncio.gather(
+            get_bootstrap_static(),
+            get_entry_details(entry_id),
+        )
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="FPL entry not found")
         raise HTTPException(status_code=502, detail="FPL API unavailable")
 
     gameweek = next(e["id"] for e in data["events"] if e["is_current"])
-    team_map = {t["id"]: t["short_name"] for t in data.get("teams", [])}
 
     try:
         picks_data = await get_entry_picks(entry_id, gameweek)
@@ -32,6 +52,7 @@ async def chip_plan_route(entry_id: int = Query(...)):
             raise HTTPException(status_code=404, detail="FPL entry not found")
         raise
 
+    chips_available = _build_chip_availability(entry_data)
     my_element_ids = {pick["element"] for pick in picks_data["picks"]}
 
     async with async_session_factory() as db:
@@ -62,8 +83,12 @@ async def chip_plan_route(entry_id: int = Query(...)):
     wc = windows["wildcard"]
 
     return ChipPlanOut(
-        triple_captain=TripleCaptainWindowOut(**tc) if tc else None,
+        triple_captain=TripleCaptainWindowOut(
+            **{k: v for k, v in tc.items() if k != "candidates"},
+            candidates=[TCCandidate(**c) for c in tc.get("candidates", [])],
+        ) if tc else None,
         bench_boost=BenchBoostWindowOut(**bb) if bb else None,
         free_hit=[FreeHitWindowOut(**w) for w in fh],
         wildcard=WildcardWindowOut(**wc) if wc else None,
+        chips_available=chips_available,
     )

@@ -15,6 +15,7 @@
     { href: '/transfers.html',    label: 'Transfers' },
     { href: '/lineup.html',       label: 'Pick Team' },
     { href: '/fixture-plan.html', label: 'Fixture Plan' },
+    { href: '/chips.html',        label: 'Chips' },
   ];
 
   const nav = document.createElement('nav');

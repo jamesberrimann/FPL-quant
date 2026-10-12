@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chip Planner — FPL Tool</title>
+  <link rel="stylesheet" href="/style.css?v=2">
+  <style>
+    /* ── Page layout ─────────────────────────── */
+    .chips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 680px) {
+      .chips-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Availability strip ──────────────────── */
+    .avail-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm);
+      margin-top: 1.5rem;
+    }
+    .avail-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.3125rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .avail-pill.available {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid rgba(22,163,74,.2);
+    }
+    .avail-pill.used {
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+    .avail-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .available .avail-dot { background: var(--success); }
+    .used .avail-dot      { background: var(--text-subtle); }
+
+    /* ── Chip cards ──────────────────────────── */
+    .chip-card-full {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--sh-sm);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .chip-card-full.used-chip {
+      opacity: 0.6;
+    }
+
+    .chip-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem 0.875rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .chip-icon-lg {
+      width: 38px; height: 38px;
+      border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .chip-icon-lg svg { width: 20px; height: 20px; }
+
+    .chip-icon-lg.tc { background: #fef3c7; color: #92400e; }
+    .chip-icon-lg.bb { background: #dbeafe; color: #1e40af; }
+    .chip-icon-lg.fh { background: #dcfce7; color: #166534; }
+    .chip-icon-lg.wc { background: #f3e8ff; color: #7e22ce; }
+
+    [data-theme="dark"] .chip-icon-lg.tc { background: #451a03; color: #fbbf24; }
+    [data-theme="dark"] .chip-icon-lg.bb { background: #172554; color: #93c5fd; }
+    [data-theme="dark"] .chip-icon-lg.fh { background: #052e16; color: #86efac; }
+    [data-theme="dark"] .chip-icon-lg.wc { background: #2e1065; color: #d8b4fe; }
+
+    .chip-header-text { flex: 1; min-width: 0; }
+    .chip-header-name {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .chip-header-gw {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 0.125rem;
+    }
+
+    .chip-avail-badge {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .chip-avail-badge.available { background: var(--success-bg); color: var(--success); }
+    .chip-avail-badge.used      { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+    .chip-card-body {
+      padding: 1rem 1.25rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .chip-reason {
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      line-height: 1.55;
+    }
+
+    /* ── Projected pts callout ───────────────── */
+    .pts-callout {
+      display: flex;
+      align-items: baseline;
+      gap: 0.375rem;
+      padding: 0.625rem 0.875rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+    .pts-callout .pts-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .pts-callout .pts-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ── TC candidates table ─────────────────── */
+    .candidates-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    .candidates-table th {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: left;
+      padding: 0 0 0.375rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .candidates-table td {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-2);
+      vertical-align: middle;
+    }
+    .candidates-table tr:last-child td { border-bottom: none; }
+    .candidates-table .rank {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      width: 20px;
+    }
+    .candidates-table .player-name { font-weight: 600; color: var(--text); }
+    .candidates-table .score-col {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .dgw-badge {
+      display: inline-block;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      padding: 0.125rem 0.375rem;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #92400e;
+      margin-left: 0.375rem;
+      vertical-align: middle;
+    }
+    [data-theme="dark"] .dgw-badge { background: #451a03; color: #fbbf24; }
+
+    /* ── DGW player tags ─────────────────────── */
+    .player-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+    .player-tag {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 999px;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    /* ── Free Hit windows list ───────────────── */
+    .fh-window {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.75rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+    .fh-window + .fh-window { margin-top: 0.5rem; }
+    .fh-window.primary-window {
+      border-color: var(--error);
+      background: var(--error-bg);
+    }
+    .fh-window-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .fh-window-gw {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .fh-window-blanks {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 999px;
+      background: var(--error-bg);
+      color: var(--error);
+    }
+    .fh-window.primary-window .fh-window-gw { color: var(--error); }
+    .fh-window-pts {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .fh-window-pts strong { color: var(--text-2); }
+
+    /* ── WC number badge ─────────────────────── */
+    .wc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.1875rem 0.625rem;
+      border-radius: 999px;
+      background: #f3e8ff;
+      color: #7e22ce;
+    }
+    [data-theme="dark"] .wc-badge { background: #2e1065; color: #d8b4fe; }
+
+    .section-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.375rem;
+    }
+
+    /* ── Empty state ─────────────────────────── */
+    .chip-empty {
+      padding: 1.25rem;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    /* ── FH full-width ───────────────────────── */
+    .fh-full { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <script src="/nav.js"></script>
+  <div class="container">
+
+    <h1>Chip Planner</h1>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin:-0.5rem 0 1.25rem">
+      Season-wide chip strategy — availability status, optimal timing, TC candidate rankings,
+      Bench Boost projections, and Free Hit blank gameweek detection.
+    </p>
+
+    <div class="controls">
+      <label for="entry-id" style="font-size:0.8125rem;font-weight:600;color:var(--text-2)">FPL Entry ID</label>
+      <input type="number" id="entry-id" placeholder="e.g. 1200601" min="1"
+             style="width:160px" value="">
+      <button id="btn-load" onclick="loadChips()">Plan Chips</button>
+    </div>
+
+    <div id="loading" class="loading">Scanning season fixtures…</div>
+    <div id="error" class="msg"></div>
+
+    <div id="results" style="display:none">
+
+      <!-- Chip availability strip -->
+      <div id="avail-strip" class="avail-strip" aria-label="Chip availability"></div>
+
+      <!-- 2-col chip grid -->
+      <div class="chips-grid" id="chips-grid"></div>
+
+    </div>
+  </div>
+
+  <script>
+    const CHIP_SVG = {
+      tc: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 4.9 1.2 7L12 18l-6.2 3.4L7 14.4 2 9.5l7-1z"/></svg>`,
+      bb: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+      fh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>`,
+      wc: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = FPL.getEntryId();
+      if (saved) document.getElementById('entry-id').value = saved;
+    });
+
+    async function loadChips() {
+      const entryInput = document.getElementById('entry-id');
+      const entryId = entryInput.value.trim();
+      if (!entryId) { FPL.showError('Enter your FPL entry ID.'); return; }
+      FPL.setEntryId(entryId);
+      FPL.clearError();
+
+      const btn = document.getElementById('btn-load');
+      FPL.setLoading(true, btn);
+      document.getElementById('results').style.display = 'none';
+
+      try {
+        const chips = await FPL.apiFetch(`/api/v1/chip-plan?entry_id=${entryId}`);
+        renderAvailability(chips.chips_available || {});
+        renderChips(chips);
+        document.getElementById('results').style.display = '';
+      } catch (err) {
+        FPL.showError(err.message);
+      } finally {
+        FPL.setLoading(false, btn);
+      }
+    }
+
+    function renderAvailability(avail) {
+      const chips = [
+        { key: 'triple_captain', label: 'Triple Captain' },
+        { key: 'bench_boost',    label: 'Bench Boost' },
+        { key: 'free_hit',       label: 'Free Hit' },
+        { key: 'wildcard1',      label: 'Wildcard 1 (GW1–20)' },
+        { key: 'wildcard2',      label: 'Wildcard 2 (GW21–38)' },
+      ];
+      const strip = document.getElementById('avail-strip');
+      strip.innerHTML = chips.map(({ key, label }) => {
+        const ok = avail[key] !== false;
+        return `<span class="avail-pill ${ok ? 'available' : 'used'}">
+          <span class="avail-dot"></span>${label}${ok ? '' : ' · Used'}
+        </span>`;
+      }).join('');
+    }
+
+    function renderChips(data) {
+      const grid = document.getElementById('chips-grid');
+      grid.innerHTML = '';
+
+      const avail = data.chips_available || {};
+      grid.appendChild(renderTC(data.triple_captain, avail.triple_captain !== false));
+      grid.appendChild(renderBB(data.bench_boost, avail.bench_boost !== false));
+      grid.appendChild(renderFH(data.free_hit || [], avail.free_hit !== false));
+      grid.appendChild(renderWC(data.wildcard, avail));
+    }
+
+    function chipCard(type, name, headerExtra, bodyHtml, available, isFullWidth) {
+      const div = document.createElement('div');
+      div.className = `chip-card-full${available ? '' : ' used-chip'}${isFullWidth ? ' fh-full' : ''}`;
+      div.innerHTML = `
+        <div class="chip-card-header">
+          <div class="chip-icon-lg ${type}">${CHIP_SVG[type]}</div>
+          <div class="chip-header-text">
+            <div class="chip-header-name">${name}</div>
+            ${headerExtra ? `<div class="chip-header-gw">${headerExtra}</div>` : ''}
+          </div>
+          <span class="chip-avail-badge ${available ? 'available' : 'used'}">${available ? 'Available' : 'Used'}</span>
+        </div>
+        <div class="chip-card-body">${bodyHtml}</div>`;
+      return div;
+    }
+
+    function renderTC(tc, available) {
+      if (!tc) {
+        return chipCard('tc', 'Triple Captain', null,
+          `<div class="chip-empty">No future fixture data available.</div>`, available);
+      }
+
+      const gwType = tc.is_dgw ? 'Double Gameweek' : 'Best Fixture';
+      const candidatesHtml = tc.candidates && tc.candidates.length
+        ? `<div>
+            <div class="section-label">Top candidates for GW${tc.gameweek}</div>
+            <table class="candidates-table">
+              <thead><tr>
+                <th></th>
+                <th>Player</th>
+                <th style="text-align:right">Score</th>
+              </tr></thead>
+              <tbody>
+                ${tc.candidates.map((c, i) => `
+                  <tr>
+                    <td class="rank">${i + 1}</td>
+                    <td class="player-name">
+                      ${c.player_name}
+                      ${c.is_dgw ? '<span class="dgw-badge">DGW</span>' : ''}
+                    </td>
+                    <td class="score-col">${c.player_score}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`
+        : '';
+
+      return chipCard('tc', 'Triple Captain', `GW${tc.gameweek} · ${gwType}`,
+        `<p class="chip-reason">${tc.reason}</p>${candidatesHtml}`, available);
+    }
+
+    function renderBB(bb, available) {
+      if (!bb) {
+        return chipCard('bb', 'Bench Boost', null,
+          `<div class="chip-empty">No double gameweek windows found for your squad.</div>`, available);
+      }
+
+      const projHtml = bb.projected_squad_pts != null
+        ? `<div class="pts-callout">
+            <span class="pts-num">~${bb.projected_squad_pts}</span>
+            <span class="pts-label">projected squad pts (all 15 players)</span>
+          </div>`
+        : '';
+
+      const tagsHtml = bb.dgw_player_names && bb.dgw_player_names.length
+        ? `<div>
+            <div class="section-label">Your DGW players</div>
+            <div class="player-tags">
+              ${bb.dgw_player_names.map(n => `<span class="player-tag">${n}</span>`).join('')}
+            </div>
+          </div>`
+        : '';
+
+      return chipCard('bb', 'Bench Boost', `GW${bb.gameweek} · ${bb.dgw_count} DGW players`,
+        `<p class="chip-reason">${bb.reason}</p>${projHtml}${tagsHtml}`, available);
+    }
+
+    function renderFH(windows, available) {
+      if (!windows.length) {
+        return chipCard('fh', 'Free Hit', null,
+          `<div class="chip-empty">No significant blank gameweek windows detected for your squad.</div>`,
+          available, true);
+      }
+
+      // Sort by blank_count descending — worst window first
+      const sorted = [...windows].sort((a, b) => b.blank_count - a.blank_count);
+      const primary = sorted[0];
+      const others = sorted.slice(1);
+
+      const windowHtml = (w, isPrimary) => `
+        <div class="fh-window${isPrimary ? ' primary-window' : ''}">
+          <div class="fh-window-header">
+            <span class="fh-window-gw">GW${w.gameweek}</span>
+            <span class="fh-window-blanks">${w.blank_count} blankers</span>
+          </div>
+          ${w.squad_projected_pts != null
+            ? `<div class="fh-window-pts">Current squad projects <strong>~${w.squad_projected_pts} pts</strong> this GW</div>`
+            : ''}
+        </div>`;
+
+      const otherWindowsHtml = others.length
+        ? `<div>
+            <div class="section-label">Other blank windows</div>
+            ${others.map(w => windowHtml(w, false)).join('')}
+          </div>`
+        : '';
+
+      return chipCard('fh', 'Free Hit',
+        `${windows.length} blank window${windows.length > 1 ? 's' : ''} detected`,
+        `<p class="chip-reason">Free Hit replaces your squad for one gameweek and reverts — ideal when most of your players blank.</p>
+         <div>
+           <div class="section-label">Worst blank gameweek</div>
+           ${windowHtml(primary, true)}
+         </div>
+         ${otherWindowsHtml}`,
+        available, true);
+    }
+
+    function renderWC(wc, avail) {
+      const wcNumber = wc ? wc.wc_number || 1 : null;
+      const wcAvailable = wcNumber === 1 ? avail.wildcard1 !== false : avail.wildcard2 !== false;
+      const wcAvailBoth = avail.wildcard1 !== false || avail.wildcard2 !== false;
+
+      if (!wc) {
+        return chipCard('wc', 'Wildcard', null,
+          `<div class="chip-empty">No significant fixture difficulty cliff detected. Squad looks stable.</div>`,
+          wcAvailBoth);
+      }
+
+      const wcBadge = `<span class="wc-badge">Wildcard ${wcNumber} · GW${wcNumber === 1 ? '1–20' : '21–38'}</span>`;
+
+      return chipCard('wc', 'Wildcard', `GW${wc.gameweek}`,
+        `<p style="margin:0">${wcBadge}</p>
+         <p class="chip-reason">${wc.reason}</p>
+         <p class="chip-reason" style="font-size:0.75rem;color:var(--text-muted);margin:0">
+           You have two wildcards per season. Use the first (GW1–20) to react to early-season injuries
+           and form, and the second (GW21–38) before the DGW run — ideally with strong coverage.
+         </p>`,
+        wcAvailable);
+    }
+  </script>
+</body>
+</html>
