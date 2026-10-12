@@ -83,16 +83,6 @@ async def ingest_player_stats() -> None:
     pulled_at = datetime.now(timezone.utc)
 
     async with async_session_factory() as session:
-        for raw_team in data["teams"]:
-            team = map_team(raw_team)
-            await session.merge(team)
-
-        for raw_player in data["elements"]:
-            player = map_player(raw_player)
-            await session.merge(player)
-
-        await session.flush()
-
         # Batch-fetch the most-recent previous-GW snapshot for every player so
         # we can compute per-GW xStats deltas without N+1 queries.
         prev_gw = current_gameweek - 1

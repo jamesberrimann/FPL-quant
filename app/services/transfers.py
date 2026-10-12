@@ -188,17 +188,16 @@ async def suggest_transfers(
         # ── Precompute ownership trend (current vs prev GW) ──────────────────
         prev_ownership = await get_prev_gw_ownership(db, all_relevant_ids, gameweek)
 
-        # ── Precompute fixture timing signals for all candidate team_ids ─────
+        # ── Precompute fixture timing signals per (team, position) ───────────
         # Done once here so the combinatorial search can use discounted scores,
         # and the suggestion output can reuse the result without extra DB hits.
-        candidate_team_ids = {p.team_id for p, _, _ in scored_candidates}
-        timing_signal_by_team: dict[int, dict | None] = {}
-        for team_id in candidate_team_ids:
-            # Use a representative position (FWD) for the timing lookup —
-            # the signal only distinguishes defensive vs attacking fixture ease,
-            # and FWD is the most conservative (attacker facing a tough defence).
-            timing_signal_by_team[team_id] = await get_fixture_timing_signal(
-                db, team_id, Position.FWD, from_gameweek=gameweek
+        # Keyed by (team_id, position) because defenders and attackers face
+        # different fixture difficulty dimensions (goals conceded vs scored).
+        candidate_team_positions = {(p.team_id, p.position) for p, _, _ in scored_candidates}
+        timing_signal_by_team_pos: dict[tuple[int, Position], dict | None] = {}
+        for team_id, position in candidate_team_positions:
+            timing_signal_by_team_pos[(team_id, position)] = await get_fixture_timing_signal(
+                db, team_id, position, from_gameweek=gameweek
             )
 
         # ── Generate candidate (out, in) transfer pairs ───────────────────────
@@ -221,7 +220,7 @@ async def suggest_transfers(
                 reverse=True,
             )[:_MAX_REPLACEMENTS_PER_SLOT]
             for new_p, new_s, new_sc in slot_candidates:
-                timing = timing_signal_by_team.get(new_p.team_id)
+                timing = timing_signal_by_team_pos.get((new_p.team_id, new_p.position))
                 effective_sc = new_sc * _TIMING_DISCOUNT if timing and timing.get("wait_recommended") else new_sc
                 improvement = effective_sc - score
                 if improvement > 0:
@@ -278,7 +277,7 @@ async def suggest_transfers(
         for i, (out_p, out_s, out_sc, in_p, in_s, in_sc, improvement) in enumerate(best_combo):
             price_change = float(in_s.price) - float(out_s.price)
             points_cost = 0 if i < free_transfers else POINTS_COST_PER_HIT
-            timing_signal = timing_signal_by_team.get(in_p.team_id)
+            timing_signal = timing_signal_by_team_pos.get((in_p.team_id, in_p.position))
             in_dgw = dgw_multipliers.get(in_p.team_id, 1.0) >= 2.0
             in_ownership_pct = (
                 float(in_s.ownership_pct) if in_s.ownership_pct is not None else None

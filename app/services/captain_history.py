@@ -13,7 +13,6 @@ async def get_captain_accuracy(entry_id: int, num_gameweeks: int = _DEFAULT_LOOK
         "captain_id": int,
         "captain_name": str,
         "captain_pts": int,        # raw (×1), actual FPL points that GW
-        "captain_bonus": int,      # extra pts from captaincy (same as captain_pts since ×2)
         "optimal_id": int,
         "optimal_name": str,
         "optimal_pts": int,        # highest raw score among starting XI that GW
@@ -63,7 +62,6 @@ async def get_captain_accuracy(entry_id: int, num_gameweeks: int = _DEFAULT_LOOK
             "gameweek": gw,
             "captain_id": cap_id,
             "captain_pts": cap_pts,
-            "captain_bonus": cap_pts,       # ×1 raw; frontend doubles for display
             "optimal_id": best_id,
             "optimal_pts": best_pts,
             "was_optimal": best_id == cap_id,

@@ -33,6 +33,7 @@ RAW_STATS = {
     "expected_goals_conceded_per_90": "0.50",
     "defensive_contribution_per_90": "0.20",
     "expected_goals_per_90": "0.80",
+    "expected_assists_per_90": "0.35",
     "total_points": 120,
     "minutes": 2500,
 }
@@ -80,6 +81,7 @@ def test_map_player_stats_decimal_fields_no_precision_loss():
     stats = map_player_stats(RAW_STATS, gameweek=5, pulled_at=PULLED_AT)
     assert stats.form == Decimal("8.5")
     assert stats.expected_goals_per_90 == Decimal("0.80")
+    assert stats.expected_assists_per_90 == Decimal("0.35")
     assert stats.expected_goals_conceded_per_90 == Decimal("0.50")
     assert stats.defensive_contribution_per_90 == Decimal("0.20")
 

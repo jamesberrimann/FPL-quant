@@ -6,7 +6,6 @@ class GWCaptainOut(BaseModel):
     captain_id: int
     captain_name: str
     captain_pts: int
-    captain_bonus: int
     optimal_id: int
     optimal_name: str
     optimal_pts: int

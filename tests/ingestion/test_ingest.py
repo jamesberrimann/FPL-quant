@@ -32,6 +32,9 @@ BOOTSTRAP = {
             "expected_goals_conceded_per_90": "0.50",
             "defensive_contribution_per_90": "0.20",
             "expected_goals_per_90": "0.80",
+            "expected_assists_per_90": "0.25",
+            "status": "a",
+            "chance_of_playing_next_round": 100,
             "total_points": 120, "minutes": 2500,
         }
     ],
@@ -75,15 +78,14 @@ async def test_ingest_teams_and_players_merges_team_and_player():
     session.commit.assert_awaited_once()
 
 
-async def test_ingest_player_stats_merges_team_player_then_adds_stats():
+async def test_ingest_player_stats_adds_stats_without_redundant_merges():
     session = _mock_session()
     with patch("app.ingestion.ingest.get_bootstrap_static", new=AsyncMock(return_value=BOOTSTRAP)), \
          patch("app.ingestion.ingest.async_session_factory", new=_mock_factory(session)):
         await ingest_player_stats()
 
-    # merge: 1 team + 1 player; add: 1 stats row
-    assert session.merge.await_count == 2
-    session.flush.assert_awaited_once()
+    # ingest_player_stats no longer re-merges teams/players (done by ingest_teams_and_players)
+    assert session.merge.await_count == 0
     assert session.add.call_count == 1
     session.commit.assert_awaited_once()
 

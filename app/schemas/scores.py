@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -8,11 +10,11 @@ class TeamScoreOut(BaseModel):
     gameweek: int
     is_current_gameweek: bool
     is_home: bool
-    team_score: int
+    team_score: Optional[int]
     opponent_id: int
     opponent_name: str
     opponent_short_name: str
-    opponent_score: int
+    opponent_score: Optional[int]
     fully_confirmed: bool
 
 

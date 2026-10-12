@@ -46,13 +46,22 @@ async def get_mini_league_context(entry_id: int) -> list[dict]:
         lid = league["id"]
         name = league["name"]
 
-        standings_data = await get_league_standings(lid)
-        standings = standings_data.get("standings", {}).get("results", [])
-        if not standings:
-            continue
+        # Paginate until we find the entry — FPL returns 50 per page.
+        all_standings: list[dict] = []
+        page = 1
+        entry_row = None
+        while True:
+            standings_data = await get_league_standings(lid, page=page)
+            page_results = standings_data.get("standings", {}).get("results", [])
+            all_standings.extend(page_results)
+            entry_row = next((r for r in page_results if r["entry"] == entry_id), None)
+            has_next = standings_data.get("standings", {}).get("has_next", False)
+            if entry_row is not None or not has_next:
+                break
+            page += 1
 
-        entry_row = next((r for r in standings if r["entry"] == entry_id), None)
-        if entry_row is None:
+        standings = all_standings
+        if not standings or entry_row is None:
             continue
 
         entry_rank = entry_row["rank"]
