@@ -631,6 +631,7 @@ tbody tr:hover td { background: var(--primary-subtle); }
 .feature-card[data-feature="transfers"]{ --feat-color: var(--feat-transfers); }
 .feature-card[data-feature="lineup"]   { --feat-color: var(--feat-lineup); }
 .feature-card[data-feature="fixtures"] { --feat-color: var(--feat-fixtures); }
+.feature-card[data-feature="chips"]    { --feat-color: var(--feat-chips); }
 
 .feature-card:hover {
   box-shadow: var(--sh);
@@ -662,12 +663,14 @@ tbody tr:hover td { background: var(--primary-subtle); }
 .feature-card[data-feature="transfers"] .card-icon { background: #f0fdf4; }
 .feature-card[data-feature="lineup"]   .card-icon  { background: var(--accent-subtle); }
 .feature-card[data-feature="fixtures"] .card-icon  { background: #ecfeff; }
+.feature-card[data-feature="chips"]    .card-icon  { background: #faf5ff; }
 
 [data-theme="dark"] .feature-card[data-feature="optimize"] .card-icon  { background: #172554; }
 [data-theme="dark"] .feature-card[data-feature="rating"]   .card-icon  { background: #2e1065; }
 [data-theme="dark"] .feature-card[data-feature="transfers"] .card-icon { background: #052e16; }
 [data-theme="dark"] .feature-card[data-feature="lineup"]   .card-icon  { background: #3a2200; }
 [data-theme="dark"] .feature-card[data-feature="fixtures"] .card-icon  { background: #0c4a6e; }
+[data-theme="dark"] .feature-card[data-feature="chips"]    .card-icon  { background: #2e1065; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .feature-card[data-feature="optimize"] .card-icon  { background: #172554; }
@@ -675,6 +678,7 @@ tbody tr:hover td { background: var(--primary-subtle); }
   :root:not([data-theme="light"]) .feature-card[data-feature="transfers"] .card-icon { background: #052e16; }
   :root:not([data-theme="light"]) .feature-card[data-feature="lineup"]   .card-icon  { background: #3a2200; }
   :root:not([data-theme="light"]) .feature-card[data-feature="fixtures"] .card-icon  { background: #0c4a6e; }
+  :root:not([data-theme="light"]) .feature-card[data-feature="chips"]    .card-icon  { background: #2e1065; }
 }
 
 .card-icon svg {
