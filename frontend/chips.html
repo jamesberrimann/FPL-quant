@@ -296,6 +296,110 @@
 
     /* ── FH full-width ───────────────────────── */
     .fh-full { grid-column: 1 / -1; }
+
+    /* ── FH squad preview ────────────────────── */
+    .fh-preview-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin-top: 0.625rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-light);
+      border: 1px solid transparent;
+      border-radius: var(--r);
+      padding: 0.3125rem 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .fh-preview-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+    .fh-preview-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .fh-squad-preview {
+      margin-top: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+    .fh-squad-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0.625rem 0.75rem;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .fh-squad-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .fh-squad-meta {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+    .fh-squad-meta strong { color: var(--text-2); }
+
+    .fh-pos-group { border-bottom: 1px solid var(--border); }
+    .fh-pos-group:last-child { border-bottom: none; }
+    .fh-pos-label {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0.375rem 0.75rem 0.125rem;
+    }
+    .fh-player-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+    .fh-player-row:hover { background: var(--surface-2); }
+    .fh-player-name { font-weight: 600; color: var(--text); }
+    .fh-player-team { font-size: 0.6875rem; color: var(--text-muted); }
+    .fh-player-fix {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+    .fh-player-price {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-2);
+      text-align: right;
+      white-space: nowrap;
+    }
+    .fh-player-pts {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--success);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* ── WC build link ───────────────────────── */
+    .wc-build-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--primary);
+      border-radius: var(--r);
+      transition: background 0.15s;
+      margin-top: 0.25rem;
+    }
+    .wc-build-link:hover { background: var(--primary-light); }
   </style>
 </head>
 <body>
@@ -477,38 +581,117 @@
           available, true);
       }
 
-      // Sort by blank_count descending — worst window first
       const sorted = [...windows].sort((a, b) => b.blank_count - a.blank_count);
       const primary = sorted[0];
       const others = sorted.slice(1);
 
-      const windowHtml = (w, isPrimary) => `
-        <div class="fh-window${isPrimary ? ' primary-window' : ''}">
-          <div class="fh-window-header">
-            <span class="fh-window-gw">GW${w.gameweek}</span>
-            <span class="fh-window-blanks">${w.blank_count} blankers</span>
-          </div>
-          ${w.squad_projected_pts != null
-            ? `<div class="fh-window-pts">Current squad projects <strong>~${w.squad_projected_pts} pts</strong> this GW</div>`
-            : ''}
-        </div>`;
-
-      const otherWindowsHtml = others.length
-        ? `<div>
-            <div class="section-label">Other blank windows</div>
-            ${others.map(w => windowHtml(w, false)).join('')}
-          </div>`
-        : '';
-
-      return chipCard('fh', 'Free Hit',
+      const card = chipCard('fh', 'Free Hit',
         `${windows.length} blank window${windows.length > 1 ? 's' : ''} detected`,
-        `<p class="chip-reason">Free Hit replaces your squad for one gameweek and reverts — ideal when most of your players blank.</p>
-         <div>
-           <div class="section-label">Worst blank gameweek</div>
-           ${windowHtml(primary, true)}
-         </div>
-         ${otherWindowsHtml}`,
+        `<p class="chip-reason">Free Hit replaces your squad for one gameweek and reverts — ideal when most of your players blank. The squad below is optimised specifically for that GW using your actual budget.</p>`,
         available, true);
+
+      const body = card.querySelector('.chip-card-body');
+
+      // Primary window
+      const primaryDiv = document.createElement('div');
+      primaryDiv.innerHTML = `
+        <div class="section-label">Worst blank gameweek</div>
+        <div class="fh-window primary-window" id="fh-primary-window">
+          <div class="fh-window-header">
+            <span class="fh-window-gw">GW${primary.gameweek}</span>
+            <span class="fh-window-blanks">${primary.blank_count} blankers</span>
+          </div>
+          ${primary.squad_projected_pts != null
+            ? `<div class="fh-window-pts">Current squad projects <strong>~${primary.squad_projected_pts} pts</strong> this GW</div>`
+            : ''}
+          <button class="fh-preview-btn" onclick="previewFHSquad(${primary.gameweek}, this)">
+            Preview Free Hit squad →
+          </button>
+          <div class="fh-squad-preview" id="fh-preview-${primary.gameweek}" style="display:none"></div>
+        </div>`;
+      body.appendChild(primaryDiv);
+
+      // Other windows
+      if (others.length) {
+        const othersDiv = document.createElement('div');
+        othersDiv.innerHTML = `<div class="section-label" style="margin-top:0.75rem">Other blank windows</div>`;
+        others.forEach(w => {
+          const wDiv = document.createElement('div');
+          wDiv.innerHTML = `
+            <div class="fh-window" style="margin-top:0.5rem">
+              <div class="fh-window-header">
+                <span class="fh-window-gw">GW${w.gameweek}</span>
+                <span class="fh-window-blanks">${w.blank_count} blankers</span>
+              </div>
+              ${w.squad_projected_pts != null
+                ? `<div class="fh-window-pts">Current squad projects <strong>~${w.squad_projected_pts} pts</strong> this GW</div>`
+                : ''}
+              <button class="fh-preview-btn" onclick="previewFHSquad(${w.gameweek}, this)">
+                Preview Free Hit squad →
+              </button>
+              <div class="fh-squad-preview" id="fh-preview-${w.gameweek}" style="display:none"></div>
+            </div>`;
+          othersDiv.appendChild(wDiv);
+        });
+        body.appendChild(othersDiv);
+      }
+
+      return card;
+    }
+
+    async function previewFHSquad(gameweek, btn) {
+      const entryId = document.getElementById('entry-id').value.trim();
+      const previewEl = document.getElementById(`fh-preview-${gameweek}`);
+      if (!previewEl) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Building squad…';
+      previewEl.style.display = '';
+      previewEl.innerHTML = '<div style="padding:0.75rem;font-size:0.8125rem;color:var(--text-muted)">Optimising…</div>';
+
+      try {
+        const data = await FPL.apiFetch(`/api/v1/fh-squad?entry_id=${entryId}&gameweek=${gameweek}`);
+        previewEl.innerHTML = renderFHSquad(data);
+        btn.style.display = 'none';
+      } catch (err) {
+        previewEl.innerHTML = `<div style="padding:0.75rem;font-size:0.8125rem;color:var(--error)">${err.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Preview Free Hit squad →';
+      }
+    }
+
+    function renderFHSquad(data) {
+      const POS_ORDER = ['GKP', 'DEF', 'MID', 'FWD'];
+      const byPos = {};
+      POS_ORDER.forEach(p => byPos[p] = []);
+      data.players.forEach(p => { if (byPos[p.position]) byPos[p.position].push(p); });
+
+      const groups = POS_ORDER.map(pos => {
+        const players = byPos[pos];
+        if (!players.length) return '';
+        const rows = players.map(p => `
+          <div class="fh-player-row">
+            <div>
+              <div class="fh-player-name">${p.web_name}</div>
+              <div class="fh-player-team">${p.team_short_name}</div>
+            </div>
+            <div class="fh-player-fix">${p.fixture_label || '—'}</div>
+            <div class="fh-player-price">£${p.price.toFixed(1)}m</div>
+            <div class="fh-player-pts">+${p.projected_pts}</div>
+          </div>`).join('');
+        return `<div class="fh-pos-group">
+          <div class="fh-pos-label">${pos}</div>
+          ${rows}
+        </div>`;
+      }).join('');
+
+      return `<div class="fh-squad-preview" style="display:block;margin-top:0;border:none">
+        <div class="fh-squad-header">
+          <span class="fh-squad-title">Free Hit squad · GW${data.gameweek}</span>
+          <span class="fh-squad-meta">£${data.total_cost.toFixed(1)}m / £${data.budget.toFixed(1)}m · <strong>~${data.projected_gw_pts} pts</strong></span>
+        </div>
+        ${groups}
+      </div>`;
     }
 
     function renderWC(wc, avail) {
@@ -528,9 +711,11 @@
         `<p style="margin:0">${wcBadge}</p>
          <p class="chip-reason">${wc.reason}</p>
          <p class="chip-reason" style="font-size:0.75rem;color:var(--text-muted);margin:0">
-           You have two wildcards per season. Use the first (GW1–20) to react to early-season injuries
-           and form, and the second (GW21–38) before the DGW run — ideally with strong coverage.
-         </p>`,
+           Wildcard completely rebuilds your squad. Use Best Squad to see the optimal 15-man team right now.
+         </p>
+         <a href="/optimize.html" class="wc-build-link">
+           Build Wildcard squad →
+         </a>`,
         wcAvailable);
     }
   </script>

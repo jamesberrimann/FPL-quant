@@ -5,14 +5,18 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import async_session_factory
 from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details
-from app.services.player_pool import get_latest_stats
+from app.services.player_pool import get_latest_stats, filter_unavailable_players, filter_by_minimum_minutes
 from app.services.prediction import predict_points
-from app.services.fixtures import get_planning_gameweek
+from app.services.fixtures import (
+    get_planning_gameweek, get_gameweek_fixture_multipliers, get_next_fixture_labels,
+)
 from app.services.chip_planner import get_chip_windows
+from app.services.optimizer import optimize_squad, InfeasibleBudgetError
 from app.schemas.chip_plan import (
     ChipPlanOut, ChipAvailability,
     TripleCaptainWindowOut, TCCandidate,
     BenchBoostWindowOut, FreeHitWindowOut, WildcardWindowOut,
+    FHSquadOut, FHSquadPlayerOut,
 )
 
 router = APIRouter()
@@ -91,4 +95,84 @@ async def chip_plan_route(entry_id: int = Query(...)):
         free_hit=[FreeHitWindowOut(**w) for w in fh],
         wildcard=WildcardWindowOut(**wc) if wc else None,
         chips_available=chips_available,
+    )
+
+
+@router.get("/fh-squad", response_model=FHSquadOut)
+async def fh_squad_route(
+    entry_id: int = Query(...),
+    gameweek: int = Query(..., ge=1, le=38),
+):
+    """Build the optimal Free Hit squad for a specific gameweek.
+
+    Uses the entry's actual budget (bank + squad value from last deadline).
+    Scores are computed for gameweek only — blank players score 0, DGW players
+    score 2× — so the optimizer naturally fills the squad with active players.
+    """
+    try:
+        data, entry_data = await asyncio.gather(
+            get_bootstrap_static(),
+            get_entry_details(entry_id),
+        )
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="FPL entry not found")
+        raise HTTPException(status_code=502, detail="FPL API unavailable")
+
+    current_gw = next(e["id"] for e in data["events"] if e["is_current"])
+    team_map = {t["id"]: t["short_name"] for t in data.get("teams", [])}
+
+    # Budget = ITB + squad value at last deadline (tenths of £m → £m)
+    bank = entry_data.get("last_deadline_bank", 0)
+    value = entry_data.get("last_deadline_value", 1000)
+    budget = round((bank + value) / 10.0, 1)
+
+    async with async_session_factory() as db:
+        rows = await get_latest_stats(db, current_gw)
+        rows = filter_unavailable_players(rows)
+        rows = filter_by_minimum_minutes(rows)
+
+        team_ids = {p.team_id for p, _ in rows}
+        gw_multipliers = await get_gameweek_fixture_multipliers(db, team_ids, gameweek)
+
+        # Score every player for this specific GW.
+        # fixture_count_multipliers bakes DGW (2×) and blank (0×) directly into scores
+        # so the optimizer picks only players who have a game in this GW.
+        scored = await predict_points(
+            rows, db, gameweek=current_gw,
+            fixture_from_gameweek=gameweek, num_fixtures=1,
+            fixture_count_multipliers=gw_multipliers,
+        )
+
+        try:
+            squad = optimize_squad(scored, budget=budget)
+        except InfeasibleBudgetError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        squad_team_ids = {p.team_id for p, _, _ in squad}
+        fixture_labels = await get_next_fixture_labels(db, squad_team_ids, gameweek)
+
+    total_cost = round(sum(float(s.price) for _, s, _ in squad), 1)
+    projected_gw_pts = round(sum(sc for _, _, sc in squad), 1)
+
+    players = [
+        FHSquadPlayerOut(
+            web_name=p.web_name,
+            position=p.position.value,
+            team_short_name=team_map.get(p.team_id, "UNK"),
+            price=float(s.price),
+            projected_pts=round(sc, 1),
+            fixture_label=fixture_labels.get(p.team_id),
+        )
+        for p, s, sc in sorted(squad, key=lambda x: (
+            ["GKP", "DEF", "MID", "FWD"].index(x[0].position.value), -x[2]
+        ))
+    ]
+
+    return FHSquadOut(
+        players=players,
+        total_cost=total_cost,
+        projected_gw_pts=projected_gw_pts,
+        budget=budget,
+        gameweek=gameweek,
     )

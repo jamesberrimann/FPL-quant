@@ -1,6 +1,23 @@
 from pydantic import BaseModel
 
 
+class FHSquadPlayerOut(BaseModel):
+    web_name: str
+    position: str
+    team_short_name: str
+    price: float
+    projected_pts: float
+    fixture_label: str | None = None
+
+
+class FHSquadOut(BaseModel):
+    players: list[FHSquadPlayerOut]
+    total_cost: float
+    projected_gw_pts: float
+    budget: float
+    gameweek: int
+
+
 class ChipAvailability(BaseModel):
     triple_captain: bool = True
     bench_boost: bool = True
