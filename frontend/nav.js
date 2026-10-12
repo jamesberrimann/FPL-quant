@@ -34,16 +34,20 @@
     FPL Tool`;
   nav.appendChild(brand);
 
+  const linksWrapper = document.createElement('div');
+  linksWrapper.className = 'nav-links';
+
   for (const { href, label } of links) {
     const a = document.createElement('a');
     a.href = href;
     a.textContent = label;
-    const isHome = href === '/' && (path === '/' || path === '/index.html');
-    const isPage = href !== '/' && path.endsWith(href.replace('/', ''));
-    if (isHome || isPage) a.classList.add('active');
-    if (isHome || isPage) a.setAttribute('aria-current', 'page');
-    nav.appendChild(a);
+    const isPage = path.endsWith(href.replace(/^\//, '')) && href !== '/';
+    if (isPage) a.classList.add('active');
+    if (isPage) a.setAttribute('aria-current', 'page');
+    linksWrapper.appendChild(a);
   }
+
+  nav.appendChild(linksWrapper);
 
   // Theme toggle button
   const themeBtn = document.createElement('button');
