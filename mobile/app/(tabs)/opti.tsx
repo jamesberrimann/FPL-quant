@@ -182,7 +182,7 @@ export default function OptiScreen() {
 
         {/* Wildcard rating block */}
         {mode === 'wildcard' && bestData && displayXi.length > 0 && (() => {
-          const score    = bestData.squad_score ?? null;
+          const score    = bestData.squad_score_percentile ?? null;
           const allP: any[] = bestData.players ?? [];
           const top3     = [...allP].sort((a, b) => (b.percentile ?? 0) - (a.percentile ?? 0)).slice(0, 3);
           const flagged  = allP.filter(p => p.flag);
