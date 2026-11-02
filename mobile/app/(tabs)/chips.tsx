@@ -11,11 +11,11 @@ function ScorePill({ gw, points, average }: { gw: number; points: number; averag
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingVertical: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg }}>
       <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, marginBottom: 4 }}>GW{gw}</Text>
-      <Text style={{ fontSize: 26, fontWeight: fontWeight.black, color: diff == null ? colors.text : above ? colors.primary : colors.error, fontVariant: ['tabular-nums'] }}>
+      <Text style={{ fontSize: 26, fontWeight: fontWeight.black, color: diff == null ? colors.text : above ? colors.success : colors.error, fontVariant: ['tabular-nums'] }}>
         {points}
       </Text>
       {average != null && <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>avg {average}</Text>}
-      {diff != null && <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, marginTop: 2, color: above ? colors.primary : colors.error }}>{above ? '+' : ''}{diff}</Text>}
+      {diff != null && <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, marginTop: 2, color: above ? colors.gold : colors.error }}>{above ? '+' : ''}{diff}</Text>}
     </View>
   );
 }
