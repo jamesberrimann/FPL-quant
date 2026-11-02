@@ -35,9 +35,11 @@ export async function validateEntryId(id: string): Promise<{ valid: boolean; tea
 }
 
 export const api = {
-  lineup:      (id: string) => request<any>(`/api/v1/lineup?entry_id=${id}`),
-  transfers:   (id: string, ft: number) => request<any>(`/api/v1/suggest-transfers?entry_id=${id}&free_transfers=${ft}`),
-  chipPlan:    (id: string) => request<any>(`/api/v1/chip-plan?entry_id=${id}`),
-  fixturePlan: (id: string) => request<any>(`/api/v1/fixture-plan?entry_id=${id}`),
-  rateSquad:   (id: string) => request<any>(`/api/v1/rate-squad?entry_id=${id}`),
+  lineup:       (id: string) => request<any>(`/api/v1/lineup?entry_id=${id}`),
+  transfers:    (id: string, ft: number) => request<any>(`/api/v1/suggest-transfers?entry_id=${id}&free_transfers=${ft}`),
+  chipPlan:     (id: string) => request<any>(`/api/v1/chip-plan?entry_id=${id}`),
+  fixturePlan:  (id: string) => request<any>(`/api/v1/fixture-plan?entry_id=${id}`),
+  rateSquad:    (id: string) => request<any>(`/api/v1/rate-squad?entry_id=${id}`),
+  bestSquad:    (budget: number) => request<any>(`/api/v1/optimize-squad?budget=${budget}`),
+  fhSquad:      (id: string, gw: number) => request<any>(`/api/v1/fh-squad?entry_id=${id}&gameweek=${gw}`),
 };

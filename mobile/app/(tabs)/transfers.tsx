@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
@@ -138,6 +139,17 @@ export default function TransfersScreen() {
         )}
 
         {suggestions.map((s: any, i: number) => <TransferCard key={i} s={s} i={i} />)}
+
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/best-squad'); }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, marginTop: spacing.sm }}
+        >
+          <View>
+            <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text }}>Best possible squad</Text>
+            <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 3 }}>Optimal 15 from scratch — good for Wildcard planning</Text>
+          </View>
+          <Text style={{ fontSize: fontSize.xl, color: colors.textMuted }}>›</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

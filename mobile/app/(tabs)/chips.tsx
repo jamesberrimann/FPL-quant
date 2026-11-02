@@ -1,5 +1,7 @@
-import { View, Text, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
@@ -118,7 +120,17 @@ export default function ChipsScreen() {
               )}
             </ChipRow>
 
-            <ChipRow title="Free Hit" subtitle={fh ? `Blank GW${fh.gameweek}` : undefined} available={avail.free_hit !== false} reason={fh?.reason} />
+            <ChipRow title="Free Hit" subtitle={fh ? `Blank GW${fh.gameweek}` : undefined} available={avail.free_hit !== false} reason={fh?.reason}>
+              {fh && avail.free_hit !== false && (
+                <TouchableOpacity
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: '/fh-squad', params: { gameweek: fh.gameweek } }); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: spacing.lg, marginBottom: spacing.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, backgroundColor: colors.surfaceRaised, borderRadius: radius.lg }}
+                >
+                  <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }}>Preview Free Hit squad for GW{fh.gameweek}</Text>
+                  <Text style={{ fontSize: fontSize.xl, color: colors.textMuted }}>›</Text>
+                </TouchableOpacity>
+              )}
+            </ChipRow>
           </>
         )}
       </ScrollView>
