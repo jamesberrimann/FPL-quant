@@ -25,8 +25,8 @@ export const colors = {
   // Semantic — green for improvements/positive, kept bright
   success:      '#4ade80',
   successMuted: 'rgba(74,222,128,0.15)',
-  error:        '#ff5c5c',
-  errorMuted:   'rgba(255,92,92,0.15)',
+  error:        '#ff2222',
+  errorMuted:   'rgba(255,34,34,0.15)',
   warning:      '#fbbf24',
   warningMuted: 'rgba(251,191,36,0.15)',
 

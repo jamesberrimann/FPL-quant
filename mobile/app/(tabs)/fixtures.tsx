@@ -11,8 +11,8 @@ const GW_COL     = 54;
 function fdrStyle(fdr: number) {
   if (fdr <= 2) return { bg: '#00cc57', text: '#003d1a' };
   if (fdr === 3) return { bg: '#d4d4d4', text: '#2a2a2a' };
-  if (fdr === 4) return { bg: '#ff4d4d', text: '#ffffff' };
-  return { bg: '#7f0000', text: '#ffffff' };
+  if (fdr === 4) return { bg: '#e81010', text: '#ffffff' };
+  return { bg: '#b80000', text: '#ffffff' };
 }
 
 const POS_ORDER = ['GKP', 'DEF', 'MID', 'FWD'];
