@@ -34,7 +34,7 @@ export default function LineupScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Header
         title="My Squad"
-        subtitle={score != null ? `Rating ${Math.round(score)}/100` : undefined}
+        subtitle={score != null ? `Squad rating  ${Math.round(score)}/100` : undefined}
         right={<SettingsButton onPress={() => router.push('/settings')} />}
       />
 
@@ -65,26 +65,50 @@ export default function LineupScreen() {
         {score !== null && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
-              {top3.map((p: any, i: number) => (
-                <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: i < 2 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}>
-                  <View>
-                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
-                    <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>{p.position} · {p.team_short_name}</Text>
-                  </View>
-                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.black, color: colors.primary }}>{Math.round(p.percentile)}th</Text>
+              {/* Score header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder, gap: spacing.lg }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 40, fontWeight: fontWeight.black, color: score >= 70 ? colors.success : score >= 50 ? colors.gold : colors.error, lineHeight: 44, fontVariant: ['tabular-nums'] }}>
+                    {Math.round(score)}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: fontWeight.semibold }}>/ 100</Text>
                 </View>
-              ))}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 }}>
+                    {score >= 80 ? 'Excellent' : score >= 65 ? 'Strong' : score >= 50 ? 'Average' : 'Below average'}
+                  </Text>
+                  <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 17 }}>
+                    Blends form, fixture difficulty, and underlying stats. Percentile vs all players at that position.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Top 3 */}
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7, marginBottom: spacing.sm }}>
+                  STRONGEST PLAYERS
+                </Text>
+                {top3.map((p: any, i: number) => (
+                  <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.surfaceBorder }}>
+                    <View>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
+                      <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>{p.position} · {p.team_short_name}</Text>
+                    </View>
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.success }}>{Math.round(p.percentile)}th %ile</Text>
+                  </View>
+                ))}
+              </View>
             </View>
 
             {flagged.length > 0 && (
               <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, marginTop: spacing.md, padding: spacing.lg }}>
-                <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.warning, letterSpacing: 0.6, marginBottom: spacing.md }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.warning, letterSpacing: 0.7, marginBottom: spacing.md }}>
                   REGRESSION RISK
                 </Text>
                 {flagged.map((p: any) => (
-                  <View key={p.id} style={{ marginBottom: spacing.sm }}>
+                  <View key={p.id} style={{ marginBottom: spacing.md }}>
                     <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
-                    <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2, lineHeight: 17 }}>{p.flag}</Text>
+                    <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 3, lineHeight: 17 }}>{p.flag}</Text>
                   </View>
                 ))}
               </View>

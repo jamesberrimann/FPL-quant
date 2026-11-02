@@ -6,12 +6,12 @@ export const colors = {
   surfaceBorder:'rgba(255,255,255,0.12)',
   nav:          '#005560',
 
-  // Brand green
-  primary:      '#00ff87',
-  primaryDim:   '#00cc6a',
-  primaryMuted: 'rgba(0,255,135,0.15)',
+  // Primary — white pops cleanest on turquoise
+  primary:      '#ffffff',
+  primaryDim:   'rgba(255,255,255,0.85)',
+  primaryMuted: 'rgba(255,255,255,0.12)',
 
-  // Accent
+  // Accent — gold for highlights, captain, positive stats
   gold:         '#fbbf24',
   goldDim:      '#f59e0b',
   goldMuted:    'rgba(251,191,36,0.15)',
@@ -22,9 +22,9 @@ export const colors = {
   textMuted:    'rgba(255,255,255,0.52)',
   textSubtle:   'rgba(255,255,255,0.26)',
 
-  // Semantic
-  success:      '#00ff87',
-  successMuted: 'rgba(0,255,135,0.15)',
+  // Semantic — green for improvements/positive, kept bright
+  success:      '#4ade80',
+  successMuted: 'rgba(74,222,128,0.15)',
   error:        '#ff5c5c',
   errorMuted:   'rgba(255,92,92,0.15)',
   warning:      '#fbbf24',

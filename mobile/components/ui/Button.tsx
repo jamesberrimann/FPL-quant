@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     letterSpacing: 0.2,
   },
-  primaryLabel:   { color: '#000000' },
+  primaryLabel:   { color: '#006d77' },
   secondaryLabel: { color: colors.primary },
   ghostLabel:     { color: colors.textSecondary },
   dangerLabel:    { color: colors.error },
