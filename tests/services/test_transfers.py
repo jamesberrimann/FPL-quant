@@ -100,12 +100,12 @@ async def test_suggest_transfers_returns_optimal_two_free_transfers(monkeypatch)
     With 2 free transfers and 2 clear upgrades available (different positions),
     both should be returned as FREE suggestions sorted by improvement desc.
 
-    Pure predicted scores: improvements are 3.5 and 3.3, both ≥ 1.5 ✓
+    Pure predicted scores: improvements are 4.5 and 4.3, both ≥ 4.0 ✓
     """
     my_p1 = make_entry(1, 9001, Position.FWD, price=5.0, score=0.0)
     my_p2 = make_entry(2, 9002, Position.MID, price=5.0, score=0.0)
-    r1 = make_entry(3, 9003, Position.FWD, price=5.0, score=3.5)
-    r2 = make_entry(4, 9004, Position.MID, price=5.0, score=3.3)
+    r1 = make_entry(3, 9003, Position.FWD, price=5.0, score=4.5)
+    r2 = make_entry(4, 9004, Position.MID, price=5.0, score=4.3)
     all_scored = [my_p1, my_p2, r1, r2]
 
     _patch_all(monkeypatch, [my_p1, my_p2], all_scored, bank_raw=0)
@@ -165,12 +165,12 @@ async def test_combinatorial_search_beats_greedy_bank_depletion(monkeypatch):
     """
     my_p1 = make_entry(1, 9001, Position.FWD, price=5.0, score=0.0)
     my_p2 = make_entry(2, 9002, Position.MID, price=5.0, score=0.0)
-    # FWD replacements for P1: improvements = 4.0 and 3.6
-    player_x = make_entry(3, 9003, Position.FWD, price=7.0, score=4.0)  # imp=4.0, costs £2m extra
-    player_w = make_entry(4, 9004, Position.FWD, price=5.0, score=3.6)  # imp=3.6, free
-    # MID replacements for P2: improvements = 3.7 and 3.2
-    player_y = make_entry(5, 9005, Position.MID, price=6.5, score=3.7)  # imp=3.7, costs £1.5m extra
-    player_z = make_entry(6, 9006, Position.MID, price=5.0, score=3.2)  # imp=3.2, free
+    # FWD replacements for P1: improvements = 5.5 and 5.2
+    player_x = make_entry(3, 9003, Position.FWD, price=7.0, score=5.5)  # imp=5.5, costs £2m extra
+    player_w = make_entry(4, 9004, Position.FWD, price=5.0, score=5.2)  # imp=5.2, free
+    # MID replacements for P2: improvements = 5.3 and 4.2
+    player_y = make_entry(5, 9005, Position.MID, price=6.5, score=5.3)  # imp=5.3, costs £1.5m extra
+    player_z = make_entry(6, 9006, Position.MID, price=5.0, score=4.2)  # imp=4.2, free
     all_scored = [my_p1, my_p2, player_x, player_w, player_y, player_z]
 
     _patch_all(monkeypatch, [my_p1, my_p2], all_scored, bank_raw=20)  # bank=£2.0m
@@ -191,8 +191,8 @@ async def test_combinatorial_search_beats_greedy_bank_depletion(monkeypatch):
     assert 2 in out_ids  # P2 sold
 
     total_improvement = sum(s["improvement"] for s in suggestions)
-    assert total_improvement == pytest.approx(3.6 + 3.7, abs=0.01), (
-        f"Combinatorial should find W+Y (3.6+3.7=7.3), not X+Z (4.0+3.2=7.2). Got {total_improvement:.2f}"
+    assert total_improvement == pytest.approx(5.2 + 5.3, abs=0.01), (
+        f"Combinatorial should find W+Y (5.2+5.3=10.5), not X+Z (5.5+4.2=9.7). Got {total_improvement:.2f}"
     )
 
 
@@ -244,8 +244,8 @@ async def test_differential_flag_set_for_low_owned_incoming_player(monkeypatch):
     is purely an informational signal on top of a worthwhile transfer.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0, ownership_pct="20.0")
-    # 7.5% owned — genuine differential with real predicted-point improvement
-    replacement = make_entry(2, 9002, Position.MID, price=5.0, score=3.5, ownership_pct="7.5")
+    # 3.0% owned — genuine differential with real predicted-point improvement
+    replacement = make_entry(2, 9002, Position.MID, price=5.0, score=4.5, ownership_pct="3.0")
     all_scored = [my_player, replacement]
 
     _patch_all(monkeypatch, [my_player], all_scored)
@@ -254,7 +254,7 @@ async def test_differential_flag_set_for_low_owned_incoming_player(monkeypatch):
 
     assert len(suggestions) == 1
     assert suggestions[0]["is_differential"] is True
-    assert suggestions[0]["in_ownership_pct"] == pytest.approx(7.5)
+    assert suggestions[0]["in_ownership_pct"] == pytest.approx(3.0)
 
 
 async def test_differential_flag_not_set_for_highly_owned_incoming_player(monkeypatch):
@@ -263,10 +263,10 @@ async def test_differential_flag_not_set_for_highly_owned_incoming_player(monkey
     Template picks shouldn't be flagged as differentials regardless of point improvement.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0, ownership_pct="20.0")
-    # 10.0% — at the boundary, NOT a differential (strict < 10 required)
-    replacement_boundary = make_entry(2, 9002, Position.MID, price=5.0, score=3.5, ownership_pct="10.0")
+    # 5.0% — at the boundary, NOT a differential (strict < 5 required)
+    replacement_boundary = make_entry(2, 9002, Position.MID, price=5.0, score=4.5, ownership_pct="5.0")
     # 30% — clearly template
-    replacement_template = make_entry(3, 9003, Position.MID, price=5.0, score=3.3, ownership_pct="30.0")
+    replacement_template = make_entry(3, 9003, Position.MID, price=5.0, score=4.3, ownership_pct="30.0")
     all_scored = [my_player, replacement_boundary, replacement_template]
 
     _patch_all(monkeypatch, [my_player], all_scored)
@@ -275,7 +275,7 @@ async def test_differential_flag_not_set_for_highly_owned_incoming_player(monkey
 
     assert len(suggestions) == 1
     assert suggestions[0]["is_differential"] is False
-    assert suggestions[0]["in_ownership_pct"] == pytest.approx(10.0)
+    assert suggestions[0]["in_ownership_pct"] == pytest.approx(5.0)
 
 
 async def test_timing_discount_suppresses_marginal_transfer(monkeypatch):
@@ -317,7 +317,7 @@ async def test_timing_discount_does_not_suppress_strong_transfer(monkeypatch):
     improvement = 4.0, discounted = 4.0 * 0.85 = 3.4 ≥ 1.5 → still suggested.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    strong_player = make_entry(2, 9002, Position.MID, price=5.0, score=4.0)
+    strong_player = make_entry(2, 9002, Position.MID, price=5.0, score=6.0)
     all_scored = [my_player, strong_player]
 
     bad_timing_signal = {"next_difficulty": 3.0, "rest_avg_difficulty": 1.5, "wait_recommended": True}
@@ -331,7 +331,7 @@ async def test_timing_discount_does_not_suppress_strong_transfer(monkeypatch):
     result = await suggest_transfers(entry_id=123, free_transfers=1)
     suggestions = result["suggestions"]
     assert len(suggestions) == 1, "Strong transfer should still be suggested despite bad timing"
-    assert suggestions[0]["improvement"] == pytest.approx(4.0 * 0.85, rel=1e-4), (
+    assert suggestions[0]["improvement"] == pytest.approx(6.0 * 0.70, rel=1e-4), (
         "Improvement shown should reflect the timing discount"
     )
     assert suggestions[0]["timing_signal"] == bad_timing_signal
@@ -348,7 +348,7 @@ async def test_price_trajectory_included_in_suggestion(monkeypatch):
     Both are informational — they do not affect whether the transfer is suggested.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     prev_prices_map = {
@@ -375,7 +375,7 @@ async def test_price_trajectory_defaults_to_zero_when_no_prev_data(monkeypatch):
     both price trajectory fields default to 0.0 — no spurious signal.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     # _patch_all already patches get_prev_gw_prices to return {}
@@ -398,7 +398,7 @@ async def test_rotation_risk_included_in_suggestion(monkeypatch):
     suggestion so the user can see that the 'upgrade' may rarely start.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     async def fake_rotation_risk(db, player_ids, current_gameweek):
@@ -419,7 +419,7 @@ async def test_rotation_risk_defaults_to_zero_when_no_data(monkeypatch):
     no spurious penalty for unknown players.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     # _patch_all patches get_rotation_risk_scores to return {} (no data)
@@ -441,7 +441,7 @@ async def test_net_transfers_this_gw_positive_when_player_being_bought(monkeypat
     is positive — the player is trending toward a price rise.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     async def fake_bootstrap():
@@ -468,7 +468,7 @@ async def test_net_transfers_defaults_to_zero_when_field_absent(monkeypatch):
     any transfers), in_net_transfers_this_gw defaults to 0 — no spurious signal.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     async def fake_bootstrap():
@@ -493,10 +493,10 @@ async def test_net_transfers_defaults_to_zero_when_field_absent(monkeypatch):
 
 async def test_break_even_weeks_set_for_hit_transfer(monkeypatch):
     """
-    A -4pt hit with 2.0 pts/GW improvement should break even in 2 GWs (ceil(4/2.0)).
+    A -4pt hit with 4.5 pts/GW improvement should break even in 1 GW (ceil(4/4.5)).
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=2.0)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     _patch_all(monkeypatch, [my_player], all_scored)
@@ -505,13 +505,13 @@ async def test_break_even_weeks_set_for_hit_transfer(monkeypatch):
     suggestions = result["suggestions"]
     assert len(suggestions) == 1
     assert suggestions[0]["points_cost"] == 4
-    assert suggestions[0]["break_even_weeks"] == 2
+    assert suggestions[0]["break_even_weeks"] == 1
 
 
 async def test_break_even_weeks_none_for_free_transfer(monkeypatch):
     """Free transfers have no hit cost, so break_even_weeks is None."""
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     _patch_all(monkeypatch, [my_player], all_scored)
@@ -533,7 +533,7 @@ async def test_hot_form_flagged_when_recent_form_exceeds_season_average(monkeypa
     """
     from decimal import Decimal
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     # Set form=12 and total_points=80 over 10 GWs → season avg=8 → form/avg=1.5
     in_player[1].total_points = 80
     in_player[1].form = Decimal("12.0")
@@ -570,7 +570,7 @@ async def test_hot_form_not_flagged_for_consistent_season_form(monkeypatch):
     """Player with form matching season average is not hot."""
     from decimal import Decimal
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     in_player[1].total_points = 80
     in_player[1].form = Decimal("8.0")  # exactly matches season avg
     all_scored = [my_player, in_player]
@@ -592,7 +592,7 @@ async def test_ownership_trend_positive_when_player_being_bought(monkeypatch):
     Player owned by 20% last GW but 25% now → trend = +5.0.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5, ownership_pct="25.0")
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5, ownership_pct="25.0")
     all_scored = [my_player, in_player]
 
     async def fake_prev_own(db, player_ids, current_gameweek):
@@ -610,7 +610,7 @@ async def test_ownership_trend_positive_when_player_being_bought(monkeypatch):
 async def test_ownership_trend_none_when_no_prev_data(monkeypatch):
     """When no previous GW ownership data exists (GW1), trend is None."""
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     # _patch_all already patches get_prev_gw_ownership to return {}
@@ -632,7 +632,7 @@ async def test_price_rise_likely_when_net_transfers_exceed_threshold(monkeypatch
     100K), in_price_rise_likely should be True.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     async def fake_bootstrap():
@@ -661,7 +661,7 @@ async def test_price_fall_likely_when_net_transfers_below_negative_threshold(mon
     be True and in_price_rise_likely False.
     """
     my_player = make_entry(1, 9001, Position.MID, price=5.0, score=0.0)
-    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=3.5)
+    in_player  = make_entry(2, 9002, Position.MID, price=5.0, score=4.5)
     all_scored = [my_player, in_player]
 
     async def fake_bootstrap():

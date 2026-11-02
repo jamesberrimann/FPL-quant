@@ -115,15 +115,15 @@ def test_advantage_pct_is_none_when_second_place_score_is_zero():
 
 def test_differential_captain_surfaces_low_owned_competitive_alternative():
     """
-    When the top pick is widely owned (>15%) and another player has:
+    When the top pick is widely owned (>5%) and another player has:
       - captaincy score ≥ 70% of the top score
-      - ownership < 15%
+      - ownership < 5%
     then differential_captain should be that player.
     """
     # Template captain: 0.8 score, 55% owned
     template = make_entry(1, Position.FWD, 0.8, ownership_pct=55.0)
-    # Differential: 0.65 score (81% of 0.8 ≥ 70%), 8% owned
-    diff = make_entry(2, Position.MID, 0.65, ownership_pct=8.0)
+    # Differential: 0.65 score (81% of 0.8 ≥ 70%), 3% owned
+    diff = make_entry(2, Position.MID, 0.65, ownership_pct=3.0)
     # Other template pick: 0.5 score, 30% owned — not differential
     other = make_entry(3, Position.DEF, 0.5, ownership_pct=30.0)
 
@@ -136,10 +136,10 @@ def test_differential_captain_surfaces_low_owned_competitive_alternative():
 
 def test_no_differential_when_top_pick_is_already_differential():
     """
-    If the recommended captain is already low-owned (<15%), there's no need
+    If the recommended captain is already low-owned (<5%), there's no need
     to surface a separate differential option.
     """
-    differential_cap = make_entry(1, Position.FWD, 0.8, ownership_pct=9.0)
+    differential_cap = make_entry(1, Position.FWD, 0.8, ownership_pct=3.0)
     runner_up = make_entry(2, Position.MID, 0.6, ownership_pct=40.0)
 
     rec = get_captain_recommendation([differential_cap, runner_up])
@@ -181,9 +181,9 @@ def test_differential_picks_highest_scoring_qualifying_player():
     is selected (not just the first in the list).
     """
     template = make_entry(1, Position.FWD, 0.9, ownership_pct=60.0)
-    # Both qualify: score ≥ 70% of 0.9 = 0.63, ownership < 15%
-    diff_weaker = make_entry(2, Position.MID, 0.65, ownership_pct=10.0)
-    diff_stronger = make_entry(3, Position.MID, 0.75, ownership_pct=7.0)
+    # Both qualify: score ≥ 70% of 0.9 = 0.63, ownership < 5%
+    diff_weaker = make_entry(2, Position.MID, 0.65, ownership_pct=2.0)
+    diff_stronger = make_entry(3, Position.MID, 0.75, ownership_pct=4.0)
 
     rec = get_captain_recommendation([template, diff_weaker, diff_stronger])
 
