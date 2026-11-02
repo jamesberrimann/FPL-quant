@@ -1,33 +1,34 @@
 export const colors = {
-  // Backgrounds
-  bg:           '#f8f7f5',
-  surface:      '#ffffff',
-  surfaceRaised:'#f2f0ed',
-  surfaceBorder:'#e4e1dc',
+  // FPL purple palette
+  bg:           '#37003c',
+  surface:      '#4a0050',
+  surfaceRaised:'#5c0065',
+  surfaceBorder:'rgba(255,255,255,0.1)',
+  nav:          '#250029',
 
-  // Brand
-  primary:      '#05c46b',
-  primaryDim:   '#04a85a',
-  primaryMuted: 'rgba(5,196,107,0.12)',
+  // Brand — FPL green
+  primary:      '#00ff87',
+  primaryDim:   '#00cc6a',
+  primaryMuted: 'rgba(0,255,135,0.15)',
 
   // Accent
-  gold:         '#e8960a',
-  goldDim:      '#c07d08',
-  goldMuted:    'rgba(232,150,10,0.12)',
+  gold:         '#f59e0b',
+  goldDim:      '#d97706',
+  goldMuted:    'rgba(245,158,11,0.15)',
 
   // Text
-  text:         '#1c1917',
-  textSecondary:'#44403c',
-  textMuted:    '#78716c',
-  textSubtle:   '#a8a29e',
+  text:         '#ffffff',
+  textSecondary:'rgba(255,255,255,0.8)',
+  textMuted:    'rgba(255,255,255,0.5)',
+  textSubtle:   'rgba(255,255,255,0.25)',
 
   // Semantic
-  success:      '#16a34a',
-  successMuted: 'rgba(22,163,74,0.1)',
-  error:        '#dc2626',
-  errorMuted:   'rgba(220,38,38,0.08)',
-  warning:      '#d97706',
-  warningMuted: 'rgba(217,119,6,0.1)',
+  success:      '#00ff87',
+  successMuted: 'rgba(0,255,135,0.15)',
+  error:        '#ff4d4d',
+  errorMuted:   'rgba(255,77,77,0.15)',
+  warning:      '#f59e0b',
+  warningMuted: 'rgba(245,158,11,0.15)',
 
   // Utility
   white:        '#ffffff',

@@ -10,7 +10,6 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
         name={name}
         size={22}
         tintColor={focused ? colors.primary : colors.textMuted}
-        animationSpec={focused ? { effect: { type: 'bounce' } } : undefined}
       />
     );
   }
@@ -23,8 +22,8 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.surfaceBorder,
+          backgroundColor: colors.nav,
+          borderTopColor: 'rgba(255,255,255,0.08)',
           borderTopWidth: 1,
         },
         tabBarActiveTintColor: colors.primary,

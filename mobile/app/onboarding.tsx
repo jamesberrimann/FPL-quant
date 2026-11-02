@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.black,
-    color: colors.black,
+    color: '#000000',
     letterSpacing: 1,
   },
   heroTitle: {

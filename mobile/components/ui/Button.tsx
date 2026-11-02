@@ -42,7 +42,7 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.black : colors.primary} size="small" />
+        <ActivityIndicator color={variant === 'primary' ? '#000' : colors.primary} size="small" />
       ) : (
         <Text style={[styles.label, styles[`${variant}Label`]]}>{label}</Text>
       )}
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     letterSpacing: 0.2,
   },
-  primaryLabel:   { color: colors.black },
+  primaryLabel:   { color: '#000000' },
   secondaryLabel: { color: colors.primary },
   ghostLabel:     { color: colors.textSecondary },
   dangerLabel:    { color: colors.error },
