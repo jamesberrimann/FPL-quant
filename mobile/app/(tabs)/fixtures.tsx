@@ -1,68 +1,24 @@
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
-import { Card } from '../../components/ui/Card';
-import { ScreenHeader } from '../../components/ui/ScreenHeader';
 
-function difficultyColor(difficulty: number): string {
-  if (difficulty <= 2) return colors.success;
-  if (difficulty === 3) return colors.gold;
-  if (difficulty === 4) return colors.warning;
-  return colors.error;
+const PLAYER_COL = 90;
+const GW_COL     = 56;
+
+function fdrStyle(fdr: number): { bg: string; text: string } {
+  if (fdr <= 2) return { bg: '#14532d', text: '#4ade80' };
+  if (fdr === 3) return { bg: '#3b2f08', text: '#fbbf24' };
+  if (fdr === 4) return { bg: '#431407', text: '#fb923c' };
+  return { bg: '#450a0a', text: '#f87171' };
 }
 
-function DifficultyDot({ difficulty }: { difficulty: number }) {
-  return (
-    <View style={[dotStyles.dot, { backgroundColor: difficultyColor(difficulty) }]} />
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  dot: { width: 8, height: 8, borderRadius: 4 },
-});
-
-function FixtureRow({ player, fixtures }: { player: any; fixtures: any[] }) {
-  return (
-    <View style={fixtureRowStyles.row}>
-      <View style={fixtureRowStyles.player}>
-        <Text style={fixtureRowStyles.name}>{player.web_name}</Text>
-        <Text style={fixtureRowStyles.pos}>{player.position}</Text>
-      </View>
-      <View style={fixtureRowStyles.cells}>
-        {fixtures.map((fix: any, i: number) => (
-          <View key={i} style={fixtureRowStyles.cell}>
-            {fix ? (
-              <>
-                <Text style={[fixtureRowStyles.opp, { color: difficultyColor(fix.difficulty ?? 3) }]}>
-                  {fix.opponent_short ?? fix.label ?? '?'}{fix.is_home ? '' : ' (a)'}
-                </Text>
-                {fix.is_dgw && <Text style={fixtureRowStyles.dgwDot}>DGW</Text>}
-              </>
-            ) : (
-              <Text style={fixtureRowStyles.blank}>-</Text>
-            )}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const fixtureRowStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
-  player: { width: 90 },
-  name: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  pos: { fontSize: 10, color: colors.textMuted, fontWeight: fontWeight.bold, letterSpacing: 0.5 },
-  cells: { flex: 1, flexDirection: 'row' },
-  cell: { flex: 1, alignItems: 'center', gap: 2 },
-  opp: { fontSize: 10, fontWeight: fontWeight.bold, textAlign: 'center' },
-  blank: { fontSize: 10, color: colors.textSubtle },
-  dgwDot: { fontSize: 7, fontWeight: fontWeight.bold, color: colors.gold, letterSpacing: 0.3 },
-});
+const POS_ORDER = ['GKP', 'DEF', 'MID', 'FWD'];
 
 export default function FixturesScreen() {
+  const insets = useSafeAreaInsets();
   const { entryId } = useEntryId();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -71,78 +27,99 @@ export default function FixturesScreen() {
     enabled: !!entryId,
   });
 
-  const gameweeks: number[] = data?.gameweeks ?? [];
-  const players: any[] = data?.players ?? [];
+  const players: any[] = [...(data?.players ?? [])].sort(
+    (a, b) => POS_ORDER.indexOf(a.position) - POS_ORDER.indexOf(b.position),
+  );
+  const numGws: number  = data?.num_gameweeks ?? 0;
+  const fromGw: number  = data?.from_gameweek ?? 0;
+  const gwLabels        = Array.from({ length: numGws }, (_, i) => fromGw + i);
+  const tableW          = PLAYER_COL + GW_COL * numGws;
 
   return (
-    <View style={styles.screen}>
-      <ScreenHeader title="Fixtures" subtitle="6-week difficulty view" />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder }}>
+        <Text style={{ fontSize: 28, fontWeight: fontWeight.black, color: colors.text, letterSpacing: -0.5 }}>Fixtures</Text>
+        {numGws > 0 && <Text style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>GW{fromGw} to GW{fromGw + numGws - 1}</Text>}
+      </View>
+
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.primary} />}
+        contentContainerStyle={{ paddingBottom: spacing.xxxl + insets.bottom }}
       >
-        {isLoading && <Text style={styles.status}>Loading fixture plan...</Text>}
+        {isLoading && <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: fontSize.sm }}>Loading fixtures...</Text>}
 
         {isError && (
-          <Card style={styles.errorCard}>
-            <Text style={styles.errorTitle}>Could not load fixtures</Text>
-            <Text style={styles.errorSub}>Pull to refresh.</Text>
-          </Card>
-        )}
-
-        {!isLoading && !isError && players.length > 0 && (
-          <Card>
-            <View style={styles.headerRow}>
-              <View style={{ width: 90 }} />
-              {gameweeks.map(gw => (
-                <View key={gw} style={styles.gwHeader}>
-                  <Text style={styles.gwLabel}>GW{gw}</Text>
-                </View>
-              ))}
-            </View>
-            {players.map((p: any) => (
-              <FixtureRow key={p.id} player={p} fixtures={p.fixtures ?? []} />
-            ))}
-          </Card>
-        )}
-
-        <View style={styles.legend}>
-          <Text style={styles.legendTitle}>Difficulty</Text>
-          <View style={styles.legendItems}>
-            {[
-              { label: 'Easy', color: colors.success },
-              { label: 'Medium', color: colors.gold },
-              { label: 'Hard', color: colors.warning },
-              { label: 'Very hard', color: colors.error },
-            ].map(item => (
-              <View key={item.label} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                <Text style={styles.legendLabel}>{item.label}</Text>
-              </View>
-            ))}
+          <View style={{ margin: spacing.lg, padding: spacing.lg, backgroundColor: colors.errorMuted, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.error }}>
+            <Text style={{ color: colors.error, fontWeight: fontWeight.bold }}>Could not load fixtures</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4 }}>Pull to refresh.</Text>
           </View>
+        )}
+
+        {players.length > 0 && (
+          <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.xl, borderCurve: 'continuous', borderWidth: 1, borderColor: colors.surfaceBorder, overflow: 'hidden' } as any}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ width: tableW }}>
+                <View style={{ flexDirection: 'row', backgroundColor: colors.surfaceRaised, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder }}>
+                  <View style={{ width: PLAYER_COL }}>
+                    <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.5 }}>PLAYER</Text>
+                  </View>
+                  {gwLabels.map(gw => (
+                    <View key={gw} style={{ width: GW_COL, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.5 }}>GW{gw}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {players.map((player, idx) => {
+                  const slots: any[] = player.gameweek_slots ?? [];
+                  return (
+                    <View key={player.player_id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: spacing.md, borderBottomWidth: idx < players.length - 1 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}>
+                      <View style={{ width: PLAYER_COL }}>
+                        <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }} numberOfLines={1}>{player.web_name}</Text>
+                        <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 1 }}>{player.position}</Text>
+                      </View>
+
+                      {slots.map((slot, si) => {
+                        if (slot.is_blank) {
+                          return <View key={si} style={{ width: GW_COL, alignItems: 'center' }}><Text style={{ fontSize: 12, color: colors.textSubtle }}>—</Text></View>;
+                        }
+                        const opp = slot.opponents?.[0];
+                        if (!opp) return <View key={si} style={{ width: GW_COL }} />;
+                        const { bg, text } = fdrStyle(opp.fdr ?? slot.avg_fdr ?? 3);
+                        return (
+                          <View key={si} style={{ width: GW_COL, alignItems: 'center', gap: 2 }}>
+                            <View style={{ paddingHorizontal: 5, paddingVertical: 3, backgroundColor: bg, borderRadius: 5, minWidth: 40, alignItems: 'center' }}>
+                              <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: text }}>
+                                {opp.short_name}({opp.is_home ? 'H' : 'A'})
+                              </Text>
+                            </View>
+                            {slot.is_double && <Text style={{ fontSize: 8, fontWeight: fontWeight.black, color: colors.gold, letterSpacing: 0.3 }}>DGW</Text>}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.lg, marginTop: spacing.lg, flexWrap: 'wrap' }}>
+          {[{ label: 'Easy', fdr: 1 }, { label: 'Medium', fdr: 3 }, { label: 'Hard', fdr: 4 }, { label: 'Very hard', fdr: 5 }].map(item => {
+            const { bg, text } = fdrStyle(item.fdr);
+            return (
+              <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: bg, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: fontWeight.bold, color: text }}>eg</Text>
+                </View>
+                <Text style={{ fontSize: fontSize.xs, color: colors.textMuted }}>{item.label}</Text>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  scroll: { flex: 1 },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  status: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl, fontSize: fontSize.sm },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder, marginBottom: spacing.xs },
-  gwHeader: { flex: 1, alignItems: 'center' },
-  gwLabel: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.5, textTransform: 'uppercase' },
-  legend: { marginTop: spacing.xl },
-  legendTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.md },
-  legendItems: { flexDirection: 'row', gap: spacing.xl },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  errorCard: { borderColor: colors.error, backgroundColor: colors.errorMuted },
-  errorTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.error, marginBottom: 4 },
-  errorSub: { fontSize: fontSize.sm, color: colors.textSecondary },
-});

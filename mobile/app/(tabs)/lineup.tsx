@@ -1,84 +1,28 @@
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { PitchView, BenchRow } from '../../components/PitchView';
 
 function ratingColor(score: number) {
-  if (score >= 7.5) return colors.success;
-  if (score >= 5)   return colors.gold;
+  if (score >= 70) return colors.success;
+  if (score >= 50) return colors.gold;
   return colors.error;
 }
 
-function positionColor(pos: string) {
-  switch (pos) {
-    case 'GKP': return colors.gold;
-    case 'DEF': return '#38bdf8';
-    case 'MID': return colors.primary;
-    case 'FWD': return '#f87171';
-    default:    return colors.textMuted;
-  }
+function ratingLabel(score: number) {
+  if (score >= 80) return 'Excellent';
+  if (score >= 65) return 'Strong';
+  if (score >= 50) return 'Average';
+  if (score >= 35) return 'Below average';
+  return 'Weak';
 }
-
-function PlayerCard({ player, isCaptain, isVice }: { player: any; isCaptain?: boolean; isVice?: boolean }) {
-  const score = player.predicted_pts ?? player.score ?? 0;
-  return (
-    <View style={pStyles.card}>
-      <View style={[pStyles.posBar, { backgroundColor: positionColor(player.position) }]} />
-      <View style={pStyles.body}>
-        <View style={pStyles.topRow}>
-          <Text style={pStyles.name}>{player.web_name}</Text>
-          {isCaptain && <View style={pStyles.capBadge}><Text style={pStyles.capText}>C</Text></View>}
-          {isVice    && <View style={[pStyles.capBadge, pStyles.vcBadge]}><Text style={pStyles.capText}>V</Text></View>}
-        </View>
-        <View style={pStyles.meta}>
-          <Text style={[pStyles.pos, { color: positionColor(player.position) }]}>{player.position}</Text>
-          {player.fixture_label && <Text style={pStyles.fixture}>{player.fixture_label}</Text>}
-        </View>
-      </View>
-      <View style={pStyles.pts}>
-        <Text style={[pStyles.ptsNum, { color: ratingColor(score) }]}>{score.toFixed(1)}</Text>
-        <Text style={pStyles.ptsSub}>pts</Text>
-      </View>
-    </View>
-  );
-}
-
-const pStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    overflow: 'hidden',
-    marginBottom: spacing.sm,
-  },
-  posBar: { width: 3 },
-  body: { flex: 1, padding: spacing.md },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 2 },
-  name: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  capBadge: {
-    width: 20, height: 20, borderRadius: radius.full,
-    backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center',
-  },
-  vcBadge: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.textMuted },
-  capText: { fontSize: fontSize.xs, fontWeight: fontWeight.black, color: colors.bg },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  pos: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, letterSpacing: 0.5 },
-  fixture: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: fontWeight.medium },
-  pts: { padding: spacing.md, alignItems: 'center', justifyContent: 'center', minWidth: 52 },
-  ptsNum: { fontSize: fontSize.lg, fontWeight: fontWeight.black, lineHeight: 20 },
-  ptsSub: { fontSize: 9, color: colors.textMuted, fontWeight: fontWeight.semibold, letterSpacing: 0.5 },
-});
 
 export default function LineupScreen() {
+  const insets = useSafeAreaInsets();
   const { entryId } = useEntryId();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -93,114 +37,140 @@ export default function LineupScreen() {
     enabled: !!entryId,
   });
 
-  const captainId    = data?.captain?.id;
-  const viceCaptainId = data?.vice_captain?.id;
-  const startingXI   = data?.starting_xi ?? [];
-  const bench        = [data?.bench_gk, ...(data?.bench_outfield ?? [])].filter(Boolean);
-  const squadRating  = ratingData?.squad_score ?? null;
+  const capId  = data?.captain?.id;
+  const vcId   = data?.vice_captain?.id;
+  const xi     = data?.starting_xi ?? [];
+  const bench  = [data?.bench_gk, ...(data?.bench_outfield ?? [])].filter(Boolean);
+
+  const squadScore: number | null = ratingData?.squad_score ?? null;
+  const allPlayers: any[]  = ratingData?.players ?? [];
+  const flagged  = allPlayers.filter((p: any) => p.flag);
+  const sorted   = [...allPlayers].sort((a, b) => b.score - a.score);
+  const top3     = sorted.slice(0, 3);
 
   return (
-    <View style={styles.screen}>
-      <ScreenHeader
-        title="Squad"
-        subtitle={entryId ? `Entry #${entryId}` : undefined}
-        right={
-          <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsBtn}>
-            <Text style={styles.settingsIcon}>⚙️</Text>
-          </TouchableOpacity>
-        }
-      />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{
+        paddingTop: insets.top + spacing.sm,
+        paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
+        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+        borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder,
+      }}>
+        <Text style={{ fontSize: 28, fontWeight: fontWeight.black, color: colors.text, letterSpacing: -0.5 }}>
+          My Squad
+        </Text>
+        <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: spacing.sm }}>
+          <Text style={{ fontSize: 22 }}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => { refetch(); }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.primary} />
         }
       >
         {isLoading && (
-          <Text style={styles.statusText}>Loading squad...</Text>
+          <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: fontSize.sm }}>
+            Loading squad...
+          </Text>
         )}
 
         {isError && (
-          <Card style={styles.errorCard}>
-            <Text style={styles.errorTitle}>Could not load squad</Text>
-            <Text style={styles.errorSub}>Check your connection and pull to refresh.</Text>
-          </Card>
+          <View style={{ margin: spacing.lg, padding: spacing.lg, backgroundColor: colors.errorMuted, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.error }}>
+            <Text style={{ color: colors.error, fontWeight: fontWeight.bold }}>Could not load squad</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4 }}>Pull to refresh.</Text>
+          </View>
         )}
 
-        {squadRating !== null && (
-          <Card style={styles.ratingCard} raised>
-            <View style={styles.ratingRow}>
-              <View>
-                <Text style={styles.ratingLabel}>Squad rating</Text>
-                <Text style={[styles.ratingScore, { color: ratingColor(squadRating) }]}>
-                  {squadRating.toFixed(1)}<Text style={styles.ratingMax}>/10</Text>
+        {xi.length > 0 && (
+          <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.lg }}>
+            <PitchView players={xi} capId={capId} vcId={vcId} />
+            <BenchRow players={bench} />
+          </View>
+        )}
+
+        {squadScore !== null && (
+          <View style={{
+            marginHorizontal: spacing.lg, marginTop: spacing.lg,
+            backgroundColor: colors.surface, borderRadius: radius.xl, borderCurve: 'continuous',
+            borderWidth: 1, borderColor: colors.surfaceBorder, overflow: 'hidden',
+          } as any}>
+            <View style={{ padding: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder }}>
+              <View style={{ alignItems: 'center', minWidth: 72 }}>
+                <Text style={{ fontSize: 42, fontWeight: fontWeight.black, color: ratingColor(squadScore), lineHeight: 46, fontVariant: ['tabular-nums'] }}>
+                  {Math.round(squadScore)}
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: fontWeight.semibold, letterSpacing: 0.5 }}>
+                  OUT OF 100
                 </Text>
               </View>
-              <View style={styles.ratingRight}>
-                {ratingData?.regression_warnings?.length > 0 && (
-                  <Badge label={`${ratingData.regression_warnings.length} risks`} variant="warning" />
-                )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 }}>
+                  {ratingLabel(squadScore)}
+                </Text>
+                <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 18 }}>
+                  Your squad scores in the {Math.round(squadScore)}th percentile compared to all players at their position. Scores blend form, fixture difficulty, and underlying stats.
+                </Text>
               </View>
             </View>
-          </Card>
-        )}
 
-        {startingXI.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Starting XI</Text>
-            {startingXI.map((p: any) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                isCaptain={p.id === captainId}
-                isVice={p.id === viceCaptainId}
-              />
-            ))}
+            {top3.length > 0 && (
+              <View style={{ padding: spacing.lg, borderBottomWidth: flagged.length > 0 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.md }}>
+                  Strongest players
+                </Text>
+                {top3.map((p: any) => (
+                  <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }}>{p.web_name}</Text>
+                      <Text style={{ fontSize: fontSize.xs, color: colors.textMuted }}>{p.position} · {p.team_short_name}</Text>
+                    </View>
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.success }}>
+                      {Math.round(p.percentile)}th %ile
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {flagged.length > 0 && (
+              <View style={{ padding: spacing.lg }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.warning, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.md }}>
+                  Regression risks
+                </Text>
+                {flagged.map((p: any) => (
+                  <View key={p.id} style={{ marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 3 }}>
+                      {p.web_name}
+                      <Text style={{ fontWeight: '400', color: colors.textMuted }}> · {p.position}</Text>
+                    </Text>
+                    <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 18 }}>{p.flag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
-        {bench.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Bench</Text>
-            {bench.map((p: any) => (
-              <PlayerCard key={p.id} player={p} />
-            ))}
+        {data?.differential_captain && (
+          <View style={{
+            marginHorizontal: spacing.lg, marginTop: spacing.md,
+            padding: spacing.lg, backgroundColor: colors.goldMuted,
+            borderRadius: radius.xl, borderCurve: 'continuous',
+            borderWidth: 1, borderColor: colors.gold,
+          } as any}>
+            <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.gold, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+              Differential captain option
+            </Text>
+            <Text style={{ fontSize: fontSize.sm, color: colors.text, lineHeight: 20 }}>
+              Consider {data.differential_captain[0]?.web_name} as a differential captain this week — similar ceiling but far lower ownership than the template pick.
+            </Text>
           </View>
         )}
+
+        <View style={{ height: spacing.xxxl + insets.bottom }} />
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen:   { flex: 1, backgroundColor: colors.bg },
-  scroll:   { flex: 1 },
-  content:  { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  statusText: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl, fontSize: fontSize.sm },
-  section:  { marginBottom: spacing.xl },
-  sectionLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
-    color: colors.textMuted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
-  },
-  ratingCard: { marginBottom: spacing.xl },
-  ratingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ratingLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: fontWeight.semibold, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 },
-  ratingScore: { fontSize: 36, fontWeight: fontWeight.black, letterSpacing: -1 },
-  ratingMax: { fontSize: fontSize.lg, color: colors.textMuted },
-  ratingRight: { alignItems: 'flex-end', gap: spacing.sm },
-  errorCard: { borderColor: colors.error, backgroundColor: colors.errorMuted },
-  errorTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.error, marginBottom: 4 },
-  errorSub: { fontSize: fontSize.sm, color: colors.textSecondary },
-  settingsBtn: { padding: spacing.sm },
-  settingsIcon: { fontSize: 20 },
-});

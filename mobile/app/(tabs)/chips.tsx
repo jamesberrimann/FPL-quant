@@ -1,83 +1,71 @@
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { ScreenHeader } from '../../components/ui/ScreenHeader';
-import { StatRow } from '../../components/ui/StatRow';
 
 function ScorePill({ gw, points, average }: { gw: number; points: number; average?: number | null }) {
   const diff = average != null ? points - average : null;
-  const isAbove = diff != null && diff >= 0;
+  const above = diff != null && diff >= 0;
   return (
-    <View style={scorePillStyles.pill}>
-      <Text style={scorePillStyles.gw}>GW{gw}</Text>
-      <Text style={[scorePillStyles.pts, diff == null ? null : isAbove ? scorePillStyles.above : scorePillStyles.below]}>
+    <View style={{ flex: 1, alignItems: 'center', paddingVertical: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, borderCurve: 'continuous', borderWidth: 1, borderColor: colors.surfaceBorder } as any}>
+      <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, marginBottom: 4 }}>GW{gw}</Text>
+      <Text style={{ fontSize: 26, fontWeight: fontWeight.black, lineHeight: 30, color: diff == null ? colors.text : above ? colors.success : colors.error, fontVariant: ['tabular-nums'] }}>
         {points}
       </Text>
-      {average != null && <Text style={scorePillStyles.avg}>avg {average}</Text>}
+      {average != null && <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>avg {average}</Text>}
       {diff != null && (
-        <Text style={[scorePillStyles.diff, isAbove ? scorePillStyles.diffPos : scorePillStyles.diffNeg]}>
-          {isAbove ? '+' : ''}{diff}
+        <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, marginTop: 2, color: above ? colors.success : colors.error }}>
+          {above ? '+' : ''}{diff}
         </Text>
       )}
     </View>
   );
 }
 
-const scorePillStyles = StyleSheet.create({
-  pill: { flex: 1, alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
-  gw: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
-  pts: { fontSize: fontSize.xxl, fontWeight: fontWeight.black, color: colors.text, lineHeight: 28 },
-  above: { color: colors.success },
-  below: { color: colors.error },
-  avg: { fontSize: 9, color: colors.textMuted, fontWeight: fontWeight.semibold, marginTop: 2 },
-  diff: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, marginTop: 2 },
-  diffPos: { color: colors.success },
-  diffNeg: { color: colors.error },
-});
-
-function ChipCard({ title, emoji, available, gw, urgent, reason, children }: {
-  title: string; emoji: string; available: boolean; gw?: number; urgent?: boolean; reason?: string; children?: React.ReactNode;
+function ChipCard({ title, subtitle, available, notYet, urgent, reason, children }: {
+  title: string; subtitle?: string; available: boolean; notYet?: boolean;
+  urgent?: boolean; reason?: string; children?: React.ReactNode;
 }) {
+  const statusLabel = notYet ? 'GW21+' : available ? 'Available' : 'Used';
+  const statusColor = notYet ? colors.textMuted : available ? colors.success : colors.textMuted;
+  const statusBg    = notYet ? colors.surfaceRaised : available ? colors.successMuted : colors.surfaceRaised;
+
   return (
-    <Card style={[chipStyles.card, urgent ? chipStyles.urgent : undefined, !available ? chipStyles.used : undefined]} raised>
-      <View style={chipStyles.header}>
-        <View style={chipStyles.iconWrap}>
-          <Text style={chipStyles.icon}>{emoji}</Text>
-        </View>
-        <View style={chipStyles.titleBlock}>
-          <View style={chipStyles.titleRow}>
-            <Text style={chipStyles.title}>{title}</Text>
-            {urgent && <Badge label="Use now" variant="warning" />}
+    <View style={{
+      backgroundColor: colors.surface, borderRadius: radius.xl, borderCurve: 'continuous',
+      borderWidth: 1, borderColor: urgent ? colors.warning : colors.surfaceBorder,
+      marginBottom: spacing.md, opacity: (!available && !notYet) ? 0.5 : 1,
+    } as any}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.lg, gap: spacing.md }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: subtitle ? 3 : 0 }}>
+            <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text }}>{title}</Text>
+            {urgent && (
+              <View style={{ paddingHorizontal: 7, paddingVertical: 2, backgroundColor: colors.warningMuted, borderRadius: 99 }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.warning }}>Use now</Text>
+              </View>
+            )}
           </View>
-          {gw && <Text style={chipStyles.gw}>Recommended GW{gw}</Text>}
+          {subtitle && <Text style={{ fontSize: fontSize.xs, color: colors.textMuted }}>{subtitle}</Text>}
         </View>
-        <Badge label={available ? 'Available' : 'Used'} variant={available ? 'success' : 'muted'} />
+        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: statusBg }}>
+          <Text style={{ fontSize: 11, fontWeight: fontWeight.bold, color: statusColor }}>{statusLabel}</Text>
+        </View>
       </View>
-      {reason && <Text style={chipStyles.reason}>{reason}</Text>}
+      {reason && (
+        <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20, paddingHorizontal: spacing.lg, paddingBottom: spacing.lg }}>
+          {reason}
+        </Text>
+      )}
       {children}
-    </Card>
+    </View>
   );
 }
 
-const chipStyles = StyleSheet.create({
-  card: { marginBottom: spacing.lg },
-  urgent: { borderColor: colors.warning },
-  used: { opacity: 0.55 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.md },
-  iconWrap: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 20 },
-  titleBlock: { flex: 1, gap: 3 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  gw: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: fontWeight.medium },
-  reason: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20 },
-});
-
 export default function ChipsScreen() {
+  const insets = useSafeAreaInsets();
   const { entryId } = useEntryId();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -86,122 +74,83 @@ export default function ChipsScreen() {
     enabled: !!entryId,
   });
 
-  const avail = data?.chips_available ?? {};
-  const wc = data?.wildcard;
-  const tc = data?.triple_captain;
-  const bb = data?.bench_boost;
-  const fh = (data?.free_hit ?? [])[0];
+  const avail  = data?.chips_available ?? {};
+  const wc     = data?.wildcard;
+  const tc     = data?.triple_captain;
+  const bb     = data?.bench_boost;
+  const fh     = (data?.free_hit ?? [])[0];
   const scores = data?.recent_scores ?? [];
-  const alert = data?.performance_alert;
+  const alert  = data?.performance_alert;
+
+  const wc1Available = avail.wildcard1 !== false;
+  const wc2Available = avail.wildcard2 !== false;
 
   return (
-    <View style={styles.screen}>
-      <ScreenHeader title="Chip Planner" subtitle="Season-wide strategy" />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder }}>
+        <Text style={{ fontSize: 28, fontWeight: fontWeight.black, color: colors.text, letterSpacing: -0.5 }}>Chip Planner</Text>
+        <Text style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>Season-wide strategy</Text>
+      </View>
+
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxxl + insets.bottom }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.primary} />}
       >
-        {isLoading && <Text style={styles.status}>Scanning season fixtures...</Text>}
-        {isError && (
-          <Card style={styles.errorCard}>
-            <Text style={styles.errorTitle}>Could not load chip plan</Text>
-            <Text style={styles.errorSub}>Pull to refresh.</Text>
-          </Card>
-        )}
+        {isLoading && <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: fontSize.sm }}>Scanning season...</Text>}
 
         {alert && (
-          <View style={styles.alertBanner}>
-            <Text style={styles.alertIcon}>⚠️</Text>
-            <Text style={styles.alertText}>{alert}</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', backgroundColor: colors.warningMuted, borderRadius: radius.xl, borderCurve: 'continuous', borderWidth: 1, borderColor: colors.warning, padding: spacing.lg, marginBottom: spacing.lg } as any}>
+            <Text style={{ flex: 1, fontSize: fontSize.sm, color: colors.text, lineHeight: 20 }}>{alert}</Text>
           </View>
         )}
 
         {scores.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Last 5 gameweeks</Text>
-            <View style={styles.scorePills}>
-              {scores.map((s: any) => (
-                <ScorePill key={s.gameweek} gw={s.gameweek} points={s.points} average={s.average} />
-              ))}
+          <View style={{ marginBottom: spacing.xl }}>
+            <Text style={{ fontSize: 11, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.md }}>
+              Last 5 gameweeks
+            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {scores.map((s: any) => <ScorePill key={s.gameweek} gw={s.gameweek} points={s.points} average={s.average} />)}
             </View>
           </View>
         )}
 
         {!isLoading && !isError && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Your chips</Text>
+          <>
+            <Text style={{ fontSize: 11, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.md }}>
+              Your chips
+            </Text>
 
-            <ChipCard
-              title="Wildcard"
-              emoji="🃏"
-              available={avail.wildcard1 || avail.wildcard2}
-              gw={wc?.gameweek}
-              urgent={wc?.urgent}
-              reason={wc?.reason}
-            />
+            <ChipCard title="Wildcard 1" subtitle="GW1 to GW20" available={wc1Available} urgent={wc?.urgent && wc1Available} reason={wc1Available && wc ? wc.reason : undefined} />
+            <ChipCard title="Wildcard 2" subtitle="GW21 to GW38" available={wc2Available} notYet={wc2Available} />
 
-            <ChipCard
-              title="Triple Captain"
-              emoji="⭐"
-              available={avail.triple_captain !== false}
-              gw={tc?.gameweek}
-              reason={tc?.reason}
-            >
+            <ChipCard title="Triple Captain" subtitle={tc ? `Best window: GW${tc.gameweek}` : undefined} available={avail.triple_captain !== false} reason={tc?.reason}>
               {tc?.candidates?.length > 0 && (
-                <View style={styles.candidates}>
+                <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: 2 }}>
                   {tc.candidates.map((c: any, i: number) => (
-                    <StatRow key={i} label={c.player_name} value={`${c.player_score} pts`} valueColor={colors.primary} />
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                      <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>{c.player_name}</Text>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.primary }}>{c.player_score} pts</Text>
+                    </View>
                   ))}
                 </View>
               )}
             </ChipCard>
 
-            <ChipCard
-              title="Bench Boost"
-              emoji="⚡"
-              available={avail.bench_boost !== false}
-              gw={bb?.gameweek}
-              reason={bb?.reason}
-            >
-              {bb?.projected_squad_pts && (
-                <View style={styles.pts}>
-                  <Text style={styles.ptsNum}>~{bb.projected_squad_pts}</Text>
-                  <Text style={styles.ptsSub}>projected squad pts</Text>
+            <ChipCard title="Bench Boost" subtitle={bb ? `Best window: GW${bb.gameweek}` : undefined} available={avail.bench_boost !== false} reason={bb?.reason}>
+              {bb?.projected_squad_pts != null && (
+                <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                  <Text style={{ fontSize: 28, fontWeight: fontWeight.black, color: colors.primary }}>~{bb.projected_squad_pts}</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: colors.textMuted }}>projected squad pts</Text>
                 </View>
               )}
             </ChipCard>
 
-            <ChipCard
-              title="Free Hit"
-              emoji="🔄"
-              available={avail.free_hit !== false}
-              gw={fh?.gameweek}
-              reason={fh?.reason}
-            />
-          </View>
+            <ChipCard title="Free Hit" subtitle={fh ? `Blank GW: GW${fh.gameweek}` : undefined} available={avail.free_hit !== false} reason={fh?.reason} />
+          </>
         )}
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  scroll: { flex: 1 },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  status: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl, fontSize: fontSize.sm },
-  section: { marginBottom: spacing.xl },
-  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.md },
-  scorePills: { flexDirection: 'row', gap: spacing.sm },
-  alertBanner: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.warningMuted, borderWidth: 1, borderColor: colors.warning, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.xl, alignItems: 'flex-start' },
-  alertIcon: { fontSize: 18 },
-  alertText: { flex: 1, fontSize: fontSize.sm, color: colors.text, lineHeight: 20 },
-  candidates: { marginTop: spacing.md },
-  pts: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: spacing.md },
-  ptsNum: { fontSize: fontSize.xxl, fontWeight: fontWeight.black, color: colors.primary },
-  ptsSub: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: fontWeight.medium },
-  errorCard: { borderColor: colors.error, backgroundColor: colors.errorMuted },
-  errorTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.error, marginBottom: 4 },
-  errorSub: { fontSize: fontSize.sm, color: colors.textSecondary },
-});

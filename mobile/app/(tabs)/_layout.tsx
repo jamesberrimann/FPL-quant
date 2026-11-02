@@ -1,23 +1,21 @@
-import { Tabs, router } from 'expo-router';
-import { TouchableOpacity, StyleSheet, View, Text } from 'react-native';
-import { colors, fontSize, fontWeight } from '../../lib/theme';
+import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { colors } from '../../lib/theme';
 
-function TabIcon({ focused, emoji, label }: { focused: boolean; emoji: string; label: string }) {
-  return (
-    <View style={tabStyles.icon}>
-      <Text style={[tabStyles.emoji, focused && tabStyles.emojiActive]}>{emoji}</Text>
-      <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>{label}</Text>
-    </View>
-  );
+function TabIcon({ name, focused }: { name: any; focused: boolean }) {
+  if (Platform.OS === 'ios') {
+    return (
+      <SymbolView
+        name={name}
+        size={22}
+        tintColor={focused ? colors.primary : colors.textMuted}
+        animationSpec={focused ? { effect: { type: 'bounce' } } : undefined}
+      />
+    );
+  }
+  return null;
 }
-
-const tabStyles = StyleSheet.create({
-  icon: { alignItems: 'center', gap: 2 },
-  emoji: { fontSize: 20, opacity: 0.45 },
-  emojiActive: { opacity: 1 },
-  label: { fontSize: 10, fontWeight: fontWeight.semibold, color: colors.textMuted },
-  labelActive: { color: colors.primary },
-});
 
 export default function TabLayout() {
   return (
@@ -28,34 +26,38 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.surfaceBorder,
           borderTopWidth: 1,
-          paddingTop: 8,
-          height: 80,
         },
-        tabBarShowLabel: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
         name="lineup"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} emoji="👕" label="Squad" />,
+          title: 'Squad',
+          tabBarIcon: ({ focused }) => <TabIcon name="person.3.fill" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="transfers"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} emoji="🔄" label="Transfers" />,
+          title: 'Transfers',
+          tabBarIcon: ({ focused }) => <TabIcon name="arrow.left.arrow.right" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="chips"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} emoji="🃏" label="Chips" />,
+          title: 'Chips',
+          tabBarIcon: ({ focused }) => <TabIcon name="chart.bar.fill" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="fixtures"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} emoji="📅" label="Fixtures" />,
+          title: 'Fixtures',
+          tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
         }}
       />
     </Tabs>
