@@ -46,6 +46,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="opti"
+        options={{
+          title: 'Opti',
+          tabBarIcon: ({ focused }) => <TabIcon name="sparkles" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="chips"
         options={{
           title: 'Chips',

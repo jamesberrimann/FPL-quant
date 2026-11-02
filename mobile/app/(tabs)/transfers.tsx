@@ -1,7 +1,6 @@
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
@@ -87,25 +86,6 @@ export default function TransfersScreen() {
       <Header
         title="Transfers"
         subtitle={suggestions.length > 0 ? `${suggestions.length} suggestion${suggestions.length !== 1 ? 's' : ''}` : undefined}
-        right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceRaised, borderRadius: radius.lg }}>
-            <TouchableOpacity
-              onPress={() => { if (freeTx > 0) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFreeTx(f => f - 1); } }}
-              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: freeTx === 0 ? 0.3 : 1 }}
-            >
-              <Text style={{ fontSize: 18, color: colors.text, fontWeight: fontWeight.bold }}>−</Text>
-            </TouchableOpacity>
-            <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.black, color: colors.primary, minWidth: 20, textAlign: 'center', fontVariant: ['tabular-nums'] }}>
-              {freeTx}
-            </Text>
-            <TouchableOpacity
-              onPress={() => { if (freeTx < 5) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFreeTx(f => f + 1); } }}
-              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: freeTx === 5 ? 0.3 : 1 }}
-            >
-              <Text style={{ fontSize: 18, color: colors.text, fontWeight: fontWeight.bold }}>+</Text>
-            </TouchableOpacity>
-          </View>
-        }
       />
 
       <ScrollView
@@ -113,6 +93,22 @@ export default function TransfersScreen() {
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxxl }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.primary} />}
       >
+        {/* Free transfers stepper */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginBottom: spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg }}>
+            <TouchableOpacity onPress={() => { if (freeTx > 0) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFreeTx(f => f - 1); } }} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', opacity: freeTx === 0 ? 0.3 : 1 }}>
+              <Text style={{ fontSize: 20, color: colors.text, fontWeight: fontWeight.bold }}>−</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.black, color: colors.primary, minWidth: 24, textAlign: 'center', fontVariant: ['tabular-nums'] }}>{freeTx}</Text>
+            <TouchableOpacity onPress={() => { if (freeTx < 5) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFreeTx(f => f + 1); } }} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', opacity: freeTx === 5 ? 0.3 : 1 }}>
+              <Text style={{ fontSize: 20, color: colors.text, fontWeight: fontWeight.bold }}>+</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: fontSize.sm, color: colors.textMuted, flex: 1 }}>
+            {freeTx === 0 ? 'All transfers cost 4pts' : freeTx === 1 ? '1 free transfer' : `${freeTx} free transfers`}
+          </Text>
+        </View>
+
         {isLoading && <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: fontSize.sm }}>Finding transfers...</Text>}
 
         {isError && (
@@ -139,17 +135,6 @@ export default function TransfersScreen() {
         )}
 
         {suggestions.map((s: any, i: number) => <TransferCard key={i} s={s} i={i} />)}
-
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/best-squad'); }}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, marginTop: spacing.sm }}
-        >
-          <View>
-            <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text }}>Best possible squad</Text>
-            <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 3 }}>Optimal 15 from scratch — good for Wildcard planning</Text>
-          </View>
-          <Text style={{ fontSize: fontSize.xl, color: colors.textMuted }}>›</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
