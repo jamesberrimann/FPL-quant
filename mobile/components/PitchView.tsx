@@ -7,17 +7,19 @@ const GKP_FILL    = '#1a1a1a';
 const GKP_STROKE  = '#000000';
 
 const TEAM_COLOURS: Record<string, [string, string]> = {
-  ARS: ['#EF0107', '#9E000A'], AVL: ['#670E36', '#3D081E'],
-  BOU: ['#DA291C', '#891100'], BRE: ['#E30613', '#8B0000'],
-  BHA: ['#0057B8', '#003D82'], CHE: ['#034694', '#012240'],
-  COV: ['#59CBE8', '#005B80'], CRY: ['#C4122E', '#8A0D1F'],
-  EVE: ['#003399', '#002266'], FUL: ['#E0E0E0', '#1A1A1A'],
-  HUL: ['#F5A623', '#A35500'], IPS: ['#0044A9', '#002D72'],
-  LEI: ['#003090', '#FDBE11'], LIV: ['#C8102E', '#8B0A1E'],
-  MCI: ['#6CABDD', '#1C2C5B'], MUN: ['#DA291C', '#8B0000'],
-  NEW: ['#1C1C1C', '#000000'], NFO: ['#DD0000', '#8B0000'],
-  TOT: ['#EEEEEE', '#132257'], WHU: ['#7A263A', '#1BB1E7'],
-  WOL: ['#FDB913', '#231F20'],
+  ARS: ['#EF0107', '#9E000A'], AVL: ['#670E36', '#95BFE5'],
+  BOU: ['#DA291C', '#000000'], BRE: ['#E30613', '#FFFFFF'],
+  BHA: ['#0057B8', '#FFFFFF'], CHE: ['#034694', '#FFFFFF'],
+  COV: ['#59CBE8', '#005B80'], CRY: ['#C4122E', '#0057A8'],
+  EVE: ['#003399', '#FFFFFF'], FUL: ['#E0E0E0', '#1A1A1A'],
+  HUL: ['#F5A623', '#000000'], IPS: ['#0044A9', '#FFFFFF'],
+  LEE: ['#EEEEEE', '#1D428A'], LEI: ['#003090', '#FDBE11'],
+  LIV: ['#C8102E', '#FFFFFF'], MCI: ['#6CABDD', '#1C2C5B'],
+  MUN: ['#DA291C', '#FFFFFF'], NEW: ['#1C1C1C', '#FFFFFF'],
+  NFO: ['#DD0000', '#FFFFFF'], SHU: ['#EE2737', '#FFFFFF'],
+  SOU: ['#D71920', '#FFFFFF'], STK: ['#E03A3E', '#FFFFFF'],
+  SUN: ['#EB172B', '#FFFFFF'], TOT: ['#EEEEEE', '#132257'],
+  WHU: ['#7A263A', '#1BB1E7'], WOL: ['#FDB913', '#231F20'],
 };
 
 const POS_FALLBACK: Record<string, [string, string]> = {
