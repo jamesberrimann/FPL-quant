@@ -2,16 +2,23 @@ from pydantic import BaseModel
 
 
 class FHSquadPlayerOut(BaseModel):
+    id: int
     web_name: str
     position: str
     team_short_name: str
     price: float
     projected_pts: float
     fixture_label: str | None = None
+    status: str | None = None
+    chance_of_playing_next_round: int | None = None
 
 
 class FHSquadOut(BaseModel):
     players: list[FHSquadPlayerOut]
+    starting_xi: list[FHSquadPlayerOut]
+    bench: list[FHSquadPlayerOut]
+    captain_id: int | None = None
+    vice_captain_id: int | None = None
     total_cost: float
     projected_gw_pts: float
     budget: float
@@ -60,6 +67,13 @@ class WildcardWindowOut(BaseModel):
     gameweek: int
     reason: str
     wc_number: int = 1
+    urgent: bool = False
+
+
+class RecentGWScore(BaseModel):
+    gameweek: int
+    points: int
+    average: int | None = None
 
 
 class ChipPlanOut(BaseModel):
@@ -68,3 +82,5 @@ class ChipPlanOut(BaseModel):
     free_hit: list[FreeHitWindowOut] = []
     wildcard: WildcardWindowOut | None = None
     chips_available: ChipAvailability = ChipAvailability()
+    performance_alert: str | None = None
+    recent_scores: list[RecentGWScore] = []

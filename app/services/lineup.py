@@ -146,7 +146,7 @@ async def _rescore_gkps_by_fixture(gkps, db, gameweek: int):
 
 async def pick_best_starting_xi_for_entry(entry_id: int, overrides: dict[int, int] | None = None):
     from app.core.db import async_session_factory
-    from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks
+    from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_transfers
     from app.services.player_pool import (
         get_latest_stats,
         get_recent_minutes_by_player_id,
@@ -166,6 +166,18 @@ async def pick_best_starting_xi_for_entry(entry_id: int, overrides: dict[int, in
 
         picks_data = await get_entry_picks(entry_id, gameweek)
         my_element_ids = {pick["element"] for pick in picks_data["picks"]}
+
+        # Between GWs, apply any pending transfers for the upcoming gameweek
+        # so the squad reflects changes the user has already made.
+        if planning_gameweek > gameweek:
+            try:
+                transfers = await get_entry_transfers(entry_id)
+                for t in transfers:
+                    if t.get("event") == planning_gameweek:
+                        my_element_ids.discard(t["element_out"])
+                        my_element_ids.add(t["element_in"])
+            except Exception:
+                pass
         if overrides:
             for out_id, in_id in overrides.items():
                 my_element_ids.discard(out_id)

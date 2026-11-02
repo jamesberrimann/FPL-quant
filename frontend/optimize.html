@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>(function(){var t=localStorage.getItem("fpl_theme"),d=document.documentElement;var isDark=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);d.setAttribute("data-theme",isDark?"dark":"light");d.style.background=isDark?"#0a160d":"#f5f6f5";d.style.colorScheme=isDark?"dark":"light";})();</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
   <title>Best Squad — FPL Tool</title>
-  <link rel="stylesheet" href="/style.css?v=7">
+  <link rel="stylesheet" href="/style.css?v=12">
   <style>
     .squad-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -127,7 +131,7 @@
   </style>
 </head>
 <body>
-  <script src="/nav.js?v=5"></script>
+  <script src="/nav.js?v=7"></script>
   <script src="/kits.js?v=5"></script>
   <div class="container">
     <h1>Best Squad</h1>
@@ -150,6 +154,11 @@
         <span id="cap-summary"></span>
       </div>
       <div class="pitch-outer">
+        <div id="pitch-toggle" style="display:none;gap:0.5rem;justify-content:center;margin-bottom:0.5rem">
+          <button id="btn-wildcard" onclick="showView('wildcard')" style="font-size:0.75rem;padding:0.25rem 0.75rem;border-radius:var(--r-md);border:1.5px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Wildcard (5 games)</button>
+          <button id="btn-freehit" onclick="showView('freehit')" style="font-size:0.75rem;padding:0.25rem 0.75rem;border-radius:var(--r-md);border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;font-weight:600">Free Hit (this GW)</button>
+        </div>
+        <p class="formation-label" id="formation-label" style="text-align:center;font-size:0.8125rem;font-weight:600;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem"></p>
         <div class="pitch" id="pitch"></div>
       </div>
       <div class="bench-section">
@@ -187,6 +196,9 @@
     const ROW_Y = { GKP: 12, DEF: 33, MID: 56, FWD: 81 };
     const { teamColours, abbr, shirtSvg, spreadX, PITCH_SVG } = FPLKits;
 
+    let _wildcardData = null;
+    let _freehitData = null;
+
     function percClass(p) {
       if (p >= 75) return 'perc-high';
       if (p >= 40) return 'perc-mid';
@@ -214,32 +226,72 @@
       let capBadge = '';
       if (player.id === captainId)     capBadge = '<span class="cap-dot" aria-label="Captain">C</span>';
       else if (player.id === vcId)     capBadge = '<span class="cap-dot vc" aria-label="Vice-captain">V</span>';
-      const isDgw = player.next_fixture && player.next_fixture.includes('DGW');
-      const fix = player.next_fixture
-        ? `<div class="fix-lbl${isDgw ? ' dgw' : ''}">${player.next_fixture}</div>` : '';
-      const pct = Math.round(player.percentile || 0);
+      const fix = player.next_fixture || player.fixture_label;
+      const isDgw = fix && fix.includes('DGW');
+      const fixHtml = fix ? `<div class="fix-lbl${isDgw ? ' dgw' : ''}">${fix}</div>` : '';
+      const pct = player.percentile != null ? Math.round(player.percentile) : null;
+      const percHtml = pct != null ? `<div class="perc-pill ${percClass(pct)}">${pct}th</div>` : '';
+      const priceHtml = player.price != null ? `<div class="player-price">£${player.price.toFixed(1)}m</div>` : '';
       const riskBadge = player.flag ? `<span class="risk-dot" title="${player.flag}">~</span>` : '';
       node.innerHTML = `
         <div class="shirt-wrap">${shirtSvg(fill, stroke, abbr(player.web_name))}${capBadge}${injuryBadge(player)}${riskBadge}</div>
         <div class="player-lbl">${player.web_name}</div>
-        <div class="player-price">£${player.price.toFixed(1)}m</div>
-        <div class="perc-pill ${percClass(pct)}">${pct}th</div>
-        ${fix}`;
+        ${priceHtml}${percHtml}${fixHtml}`;
       document.getElementById('pitch').appendChild(node);
     }
 
     function benchHtml(player) {
       const [fill, stroke] = teamColours(player);
-      const fix   = player.next_fixture ? `<div class="bench-fix">${player.next_fixture}</div>` : '';
-      const pct = Math.round(player.percentile || 0);
+      const fix = player.next_fixture || player.fixture_label;
+      const fixHtml = fix ? `<div class="bench-fix">${fix}</div>` : '';
+      const pct = player.percentile != null ? Math.round(player.percentile) : null;
+      const percHtml = pct != null ? `<div class="perc-pill ${percClass(pct)}" style="font-size:0.4rem">${pct}th</div>` : '';
+      const priceHtml = player.price != null ? `<div class="bench-price">£${player.price.toFixed(1)}m</div>` : '';
       const riskBadge = player.flag ? `<span class="risk-dot" title="${player.flag}">~</span>` : '';
       return `<div class="bench-item">
         <div class="bench-shirt" style="position:relative">${shirtSvg(fill, stroke, abbr(player.web_name))}${injuryBadge(player)}${riskBadge}</div>
         <div class="bench-lbl">${player.web_name}</div>
-        <div class="bench-price">£${player.price.toFixed(1)}m</div>
-        <div class="perc-pill ${percClass(pct)}" style="font-size:0.4rem">${pct}th</div>
-        ${fix}
+        ${priceHtml}${percHtml}${fixHtml}
       </div>`;
+    }
+
+    function renderPitch(startingXi, bench, captainId, vcId) {
+      document.querySelectorAll('#pitch .player-node').forEach(n => n.remove());
+      document.getElementById('pitch').innerHTML = PITCH_SVG;
+      const groups = { GKP: [], DEF: [], MID: [], FWD: [] };
+      for (const p of startingXi) groups[p.position].push(p);
+      const def = groups.DEF.length, mid = groups.MID.length, fwd = groups.FWD.length;
+      document.getElementById('formation-label').textContent = `${def} – ${mid} – ${fwd}`;
+      for (const [pos, players] of Object.entries(groups)) {
+        players.sort((a, b) => (b.score || b.projected_pts || 0) - (a.score || a.projected_pts || 0));
+        players.forEach((p, i) => {
+          p._x = spreadX(players.length, i);
+          p._y = ROW_Y[pos];
+          placePlayer(p, captainId, vcId);
+        });
+      }
+      document.getElementById('bench-row').innerHTML = bench.map(p => benchHtml(p)).join('');
+    }
+
+    const _summaries = {};
+    const _capSummaries = {};
+
+    function showView(mode) {
+      const data = mode === 'freehit' ? _freehitData : _wildcardData;
+      if (!data) return;
+      renderPitch(data.starting_xi, data.bench, data.captain_id, data.vice_captain_id);
+      document.getElementById('summary').innerHTML = _summaries[mode] || '';
+      document.getElementById('cap-summary').innerHTML = _capSummaries[mode] || '';
+
+      const btnWC = document.getElementById('btn-wildcard');
+      const btnFH = document.getElementById('btn-freehit');
+      const isWC = mode === 'wildcard';
+      btnWC.style.background = isWC ? 'var(--primary)' : 'var(--surface)';
+      btnWC.style.color = isWC ? '#fff' : 'var(--text-muted)';
+      btnWC.style.borderColor = isWC ? 'var(--primary)' : 'var(--border)';
+      btnFH.style.background = isWC ? 'var(--surface)' : 'var(--primary)';
+      btnFH.style.color = isWC ? 'var(--text-muted)' : '#fff';
+      btnFH.style.borderColor = isWC ? 'var(--border)' : 'var(--primary)';
     }
 
     function generateRatingSummary(data) {
@@ -284,68 +336,74 @@
       return html;
     }
 
+    function buildSummaries(data, mode) {
+      const groups = { GKP: [], DEF: [], MID: [], FWD: [] };
+      for (const p of data.starting_xi) groups[p.position].push(p);
+      const def = groups.DEF.length, mid = groups.MID.length, fwd = groups.FWD.length;
+      const scoreLabel = mode === 'freehit'
+        ? `GW pts <strong>~${data.squad_score.toFixed(1)}</strong>`
+        : `Avg <strong>${data.squad_score.toFixed(2)} pts/gw</strong>`;
+      _summaries[mode] =
+        `<strong>${def}–${mid}–${fwd}</strong> · `+
+        `Total cost <strong>£${data.total_cost.toFixed(1)}m</strong> · `+
+        scoreLabel;
+
+      const factorTags = fs => fs && fs.length
+        ? ' ' + fs.map(f => `<span class="badge-factor">${f}</span>`).join(' ') : '';
+      const capOwn = data.captain_ownership_pct;
+      const vcOwn  = data.vc_ownership_pct;
+      const capPlayer = data.starting_xi.find(p => p.id === data.captain_id);
+      const vcPlayer  = data.starting_xi.find(p => p.id === data.vice_captain_id);
+      let capSummary = '';
+      if (capPlayer) {
+        const diff = capOwn != null && capOwn < 15 ? ' <span class="badge-diff">DIFF</span>' : '';
+        const own  = capOwn != null ? ` ${capOwn.toFixed(1)}%` : '';
+        capSummary += `C: <strong>${capPlayer.web_name}</strong>${own}${diff}${factorTags(data.captain_top_factors)}`;
+      }
+      if (vcPlayer) {
+        const diff = vcOwn != null && vcOwn < 15 ? ' <span class="badge-diff">DIFF</span>' : '';
+        const own  = vcOwn != null ? ` ${vcOwn.toFixed(1)}%` : '';
+        capSummary += (capSummary ? ' &nbsp;·&nbsp; ' : '') +
+          `VC: <strong>${vcPlayer.web_name}</strong>${own}${diff}${factorTags(data.vc_top_factors)}`;
+      }
+      _capSummaries[mode] = capSummary;
+    }
+
     async function run() {
       const btn = document.getElementById('run-btn');
       document.getElementById('results').style.display = 'none';
+      document.getElementById('pitch-toggle').style.display = 'none';
       FPL.clearError(); FPL.setLoading(true, btn);
-      document.querySelectorAll('#pitch .player-node').forEach(n => n.remove());
-      document.getElementById('pitch').innerHTML = PITCH_SVG;
+      _wildcardData = null;
+      _freehitData = null;
 
       const budget = document.getElementById('budget').value;
 
       try {
-        const data = await FPL.apiFetch(`/api/v1/optimize-squad?budget=${budget}`);
+        // Fetch both modes in parallel
+        const [wcData, fhData] = await Promise.all([
+          FPL.apiFetch(`/api/v1/optimize-squad?budget=${budget}&mode=wildcard`),
+          FPL.apiFetch(`/api/v1/optimize-squad?budget=${budget}&mode=freehit`),
+        ]);
 
-        // Place starting XI on pitch
-        const groups = { GKP: [], DEF: [], MID: [], FWD: [] };
-        for (const p of data.starting_xi) groups[p.position].push(p);
+        _wildcardData = wcData;
+        _freehitData  = fhData;
+        buildSummaries(wcData, 'wildcard');
+        buildSummaries(fhData, 'freehit');
 
-        for (const [pos, players] of Object.entries(groups)) {
-          players.sort((a, b) => b.score - a.score);
-          players.forEach((p, i) => {
-            p._x = spreadX(players.length, i);
-            p._y = ROW_Y[pos];
-            placePlayer(p, data.captain_id, data.vice_captain_id);
-          });
-        }
+        // Default: show wildcard view
+        renderPitch(wcData.starting_xi, wcData.bench, wcData.captain_id, wcData.vice_captain_id);
+        document.getElementById('summary').innerHTML = _summaries['wildcard'];
+        document.getElementById('cap-summary').innerHTML = _capSummaries['wildcard'];
+        document.getElementById('pitch-toggle').style.display = 'flex';
 
-        // Bench
-        document.getElementById('bench-row').innerHTML = data.bench.map(benchHtml).join('');
-
-        const def = groups.DEF.length, mid = groups.MID.length, fwd = groups.FWD.length;
-        document.getElementById('summary').innerHTML =
-          `<strong>${def}–${mid}–${fwd}</strong> · `+
-          `Total cost <strong>£${data.total_cost.toFixed(1)}m</strong> · `+
-          `Avg <strong>${data.squad_score.toFixed(2)} pts/gw</strong>`;
-
-        // Captain/VC ownership summary
-        const capOwn = data.captain_ownership_pct;
-        const vcOwn  = data.vc_ownership_pct;
-        const capPlayer = data.starting_xi.find(p => p.id === data.captain_id);
-        const vcPlayer  = data.starting_xi.find(p => p.id === data.vice_captain_id);
-        const factorTags = fs => fs && fs.length
-          ? ' ' + fs.map(f => `<span class="badge-factor">${f}</span>`).join(' ') : '';
-
-        let capSummary = '';
-        if (capPlayer) {
-          const diff = capOwn != null && capOwn < 15 ? ' <span class="badge-diff">DIFF</span>' : '';
-          const own  = capOwn != null ? ` ${capOwn.toFixed(1)}%` : '';
-          capSummary += `C: <strong>${capPlayer.web_name}</strong>${own}${diff}${factorTags(data.captain_top_factors)}`;
-        }
-        if (vcPlayer) {
-          const diff = vcOwn != null && vcOwn < 15 ? ' <span class="badge-diff">DIFF</span>' : '';
-          const own  = vcOwn != null ? ` ${vcOwn.toFixed(1)}%` : '';
-          capSummary += (capSummary ? ' &nbsp;·&nbsp; ' : '') +
-            `VC: <strong>${vcPlayer.web_name}</strong>${own}${diff}${factorTags(data.vc_top_factors)}`;
-        }
-        document.getElementById('cap-summary').innerHTML = capSummary;
-        // Squad rating
-        const sqPct = data.squad_score_percentile;
+        // Squad rating based on wildcard squad
+        const sqPct = wcData.squad_score_percentile;
         if (sqPct != null) {
           const valEl = document.getElementById('squad-rating-value');
           valEl.textContent = sqPct.toFixed(1);
           valEl.style.color = sqPct >= 70 ? 'var(--success)' : sqPct >= 45 ? '#d97706' : 'var(--error)';
-          document.getElementById('squad-rating-summary').innerHTML = generateRatingSummary(data);
+          document.getElementById('squad-rating-summary').innerHTML = generateRatingSummary(wcData);
         }
 
         document.getElementById('results').style.display = '';

@@ -67,6 +67,10 @@ async def get_entry_picks(entry_id: int, gameweek: int) -> dict:
     return await _get(f"{settings.fpl_api_base_url}/entry/{entry_id}/event/{gameweek}/picks/")
 
 
+async def get_entry_transfers(entry_id: int) -> list:
+    return await _get(f"{settings.fpl_api_base_url}/entry/{entry_id}/transfers/")
+
+
 async def get_entry_history(entry_id: int) -> dict:
     return await _get(f"{settings.fpl_api_base_url}/entry/{entry_id}/history/")
 

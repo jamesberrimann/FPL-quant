@@ -10,7 +10,7 @@
 
   const links = [
     { href: '/optimize.html',     label: 'Best Squad' },
-    { href: '/rate-squad.html',   label: 'Rating' },
+    { href: '/rate-squad.html',   label: 'Squad Rating' },
     { href: '/transfers.html',    label: 'Transfers' },
     { href: '/lineup.html',       label: 'Pick Team' },
     { href: '/chips.html',        label: 'Chips' },
@@ -31,7 +31,7 @@
         <polyline points="9,2 12,2 12,5"/>
       </svg>
     </span>
-    FPL Tool`;
+    FPL`;
   nav.appendChild(brand);
 
   const linksWrapper = document.createElement('div');

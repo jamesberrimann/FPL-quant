@@ -1,10 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>(function(){var t=localStorage.getItem("fpl_theme"),d=document.documentElement;var isDark=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);d.setAttribute("data-theme",isDark?"dark":"light");d.style.background=isDark?"#0a160d":"#f5f6f5";d.style.colorScheme=isDark?"dark":"light";})();</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
   <title>Chip Planner — FPL Tool</title>
-  <link rel="stylesheet" href="/style.css?v=7">
+  <link rel="stylesheet" href="/style.css?v=12">
+  <style>
+    /* FH pitch toggle */
+    .fh-pitch-toggle {
+      display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;
+    }
+    .fh-pitch-wrap {
+      position: relative;
+      background: #2e7d46;
+      background-image: repeating-linear-gradient(180deg,
+        transparent, transparent 48px, rgba(0,0,0,.055) 48px, rgba(0,0,0,.055) 96px);
+      border-radius: 8px; overflow: hidden; aspect-ratio: 2/3;
+    }
+    .fh-player-node {
+      position: absolute; display: flex; flex-direction: column;
+      align-items: center; transform: translate(-50%, -50%);
+    }
+    .fh-shirt-wrap { position: relative; width: 34px; height: 37px; }
+    .fh-shirt-wrap svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+    .fh-cap-dot {
+      position: absolute; top: -4px; right: -6px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #f59e0b; border: 2px solid #fff;
+      font-size: 7px; font-weight: 800; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2;
+    }
+    .fh-cap-dot.vc { background: #94a3b8; }
+    .fh-inj-dot {
+      position: absolute; top: -4px; left: -6px;
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid #fff; font-size: 8px; font-weight: 900; color: #fff;
+      display: flex; align-items: center; justify-content: center; z-index: 2;
+    }
+    .fh-inj-dot.out      { background: #dc2626; }
+    .fh-inj-dot.doubtful { background: #f97316; }
+    .fh-inj-dot.concern  { background: #eab308; color: #713f12; }
+    .fh-plbl {
+      font-size: 0.5rem; font-weight: 700; color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.8);
+      white-space: nowrap; margin-top: 2px; text-transform: uppercase;
+    }
+    .fh-fix {
+      font-size: 0.4375rem; font-weight: 600;
+      color: rgba(255,255,255,.65);
+      text-shadow: 0 1px 3px rgba(0,0,0,.7);
+      white-space: nowrap; margin-top: 1px;
+    }
+    .fh-fix.dgw { color: #fbbf24; }
+    .fh-bench-row {
+      display: flex; align-items: flex-start; justify-content: center;
+      gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 0 0 8px 8px; border-top: none;
+    }
+    .fh-bench-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .fh-bench-shirt { width: 28px; height: 31px; }
+    .fh-bench-shirt svg { width: 100%; height: 100%; opacity: .75; }
+    .fh-bench-lbl { font-size: 0.5625rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .fh-bench-fix { font-size: 0.4375rem; color: var(--text-muted); white-space: nowrap; }
+  </style>
   <style>
     /* ── Page layout ─────────────────────────── */
     .chips-grid {
@@ -384,6 +448,115 @@
       white-space: nowrap;
     }
 
+    /* ── Recent scores strip ────────────────── */
+    .scores-strip {
+      display: flex;
+      gap: 0.625rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .score-pill {
+      flex: 1;
+      min-width: 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.625rem 0.5rem 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm);
+    }
+    .score-pill-gw {
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .score-pill-pts {
+      font-size: 1.375rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .score-pill-pts.above-avg { color: var(--success); }
+    .score-pill-pts.below-avg { color: #ef4444; }
+    .score-pill-avg {
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .score-pill-diff {
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 0.0625rem 0.3125rem;
+      border-radius: 999px;
+    }
+    .score-pill-diff.pos { background: var(--success-bg); color: var(--success); }
+    .score-pill-diff.neg { background: #fee2e2; color: #dc2626; }
+    [data-theme="dark"] .score-pill-diff.neg { background: #450a0a; color: #f87171; }
+
+    /* ── Performance alert banner ───────────── */
+    .perf-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.875rem 1.125rem;
+      background: #fff7ed;
+      border: 1px solid #fb923c;
+      border-radius: var(--r-lg);
+      margin-top: 1.25rem;
+      font-size: 0.8125rem;
+      color: #7c2d12;
+      line-height: 1.5;
+    }
+    [data-theme="dark"] .perf-alert {
+      background: #431407;
+      border-color: #ea580c;
+      color: #fed7aa;
+    }
+    .perf-alert-icon {
+      font-size: 1.125rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 0.0625rem;
+    }
+    .perf-alert strong { font-weight: 700; }
+
+    /* ── Urgent wildcard card ────────────────── */
+    .chip-card-full.wc-urgent {
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px rgba(249,115,22,.15);
+    }
+    [data-theme="dark"] .chip-card-full.wc-urgent {
+      border-color: #ea580c;
+      box-shadow: 0 0 0 3px rgba(234,88,12,.2);
+    }
+    .urgent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fb923c;
+      margin-left: 0.5rem;
+    }
+    [data-theme="dark"] .urgent-badge {
+      background: #431407;
+      color: #fb923c;
+      border-color: #ea580c;
+    }
+
     /* ── WC build link ───────────────────────── */
     .wc-build-link {
       display: inline-flex;
@@ -403,7 +576,8 @@
   </style>
 </head>
 <body>
-  <script src="/nav.js?v=5"></script>
+  <script src="/nav.js?v=7"></script>
+  <script src="/kits.js?v=5"></script>
   <div class="container">
 
     <h1>Chip Planner</h1>
@@ -423,6 +597,12 @@
     <div id="error" class="msg"></div>
 
     <div id="results" style="display:none">
+
+      <!-- Last 5 GW scores -->
+      <div id="scores-strip" class="scores-strip"></div>
+
+      <!-- Performance alert (shown only when team is struggling) -->
+      <div id="perf-alert" style="display:none"></div>
 
       <!-- Chip availability strip -->
       <div id="avail-strip" class="avail-strip" aria-label="Chip availability"></div>
@@ -459,6 +639,8 @@
 
       try {
         const chips = await FPL.apiFetch(`/api/v1/chip-plan?entry_id=${entryId}`);
+        renderScoresStrip(chips.recent_scores || []);
+        renderPerformanceAlert(chips.performance_alert);
         renderAvailability(chips.chips_available || {});
         renderChips(chips);
         document.getElementById('results').style.display = '';
@@ -467,6 +649,37 @@
       } finally {
         FPL.setLoading(false, btn);
       }
+    }
+
+    function renderScoresStrip(scores) {
+      const el = document.getElementById('scores-strip');
+      if (!scores.length) { el.innerHTML = ''; return; }
+      el.innerHTML = scores.map(s => {
+        const diff = s.average != null ? s.points - s.average : null;
+        const cls = diff == null ? '' : diff >= 0 ? 'above-avg' : 'below-avg';
+        const diffHtml = diff != null
+          ? `<span class="score-pill-diff ${diff >= 0 ? 'pos' : 'neg'}">${diff >= 0 ? '+' : ''}${diff}</span>`
+          : '';
+        const avgHtml = s.average != null
+          ? `<span class="score-pill-avg">avg ${s.average}</span>`
+          : '';
+        return `<div class="score-pill">
+          <span class="score-pill-gw">GW${s.gameweek}</span>
+          <span class="score-pill-pts ${cls}">${s.points}</span>
+          ${avgHtml}
+          ${diffHtml}
+        </div>`;
+      }).join('');
+    }
+
+    function renderPerformanceAlert(msg) {
+      const el = document.getElementById('perf-alert');
+      if (!msg) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      el.style.display = '';
+      el.innerHTML = `<div class="perf-alert">
+        <span class="perf-alert-icon">⚠️</span>
+        <span><strong>Your team is struggling.</strong> ${msg}</span>
+      </div>`;
     }
 
     function renderAvailability(avail) {
@@ -639,6 +852,92 @@
       return card;
     }
 
+    const _fhState = {};
+    const FH_ROW_Y = { GKP: 12, DEF: 33, MID: 56, FWD: 81 };
+
+    function fhInjuryBadge(p) {
+      const s = p.status || 'a';
+      const c = p.chance_of_playing_next_round;
+      if (s === 'i' || s === 's' || s === 'u' || c === 0)
+        return `<span class="fh-inj-dot out">!</span>`;
+      if (s === 'd' || (c != null && c < 75))
+        return `<span class="fh-inj-dot doubtful">!</span>`;
+      if (c != null && c < 100)
+        return `<span class="fh-inj-dot concern">!</span>`;
+      return '';
+    }
+
+    function fhPlacePlayer(pitchEl, p, x, y, captainId, vcId) {
+      const { teamColours, abbr, shirtSvg } = FPLKits;
+      const [fill, stroke] = teamColours(p);
+      const node = document.createElement('div');
+      node.className = 'fh-player-node';
+      node.style.left = x + '%';
+      node.style.top = y + '%';
+      const cap = p.id === captainId ? '<span class="fh-cap-dot">C</span>' : (p.id === vcId ? '<span class="fh-cap-dot vc">V</span>' : '');
+      const fix = p.next_fixture || p.fixture_label;
+      const isDgw = fix && fix.includes('DGW');
+      const fixHtml = fix ? `<div class="fh-fix${isDgw ? ' dgw' : ''}">${fix}</div>` : '';
+      node.innerHTML = `
+        <div class="fh-shirt-wrap">${shirtSvg(fill, stroke, abbr(p.web_name))}${cap}${fhInjuryBadge(p)}</div>
+        <div class="fh-plbl">${p.web_name}</div>
+        ${fixHtml}`;
+      pitchEl.appendChild(node);
+    }
+
+    function fhRenderPitch(pitchEl, startingXi, captainId, vcId) {
+      const { spreadX, PITCH_SVG } = FPLKits;
+      pitchEl.innerHTML = PITCH_SVG;
+      const groups = { GKP: [], DEF: [], MID: [], FWD: [] };
+      for (const p of startingXi) groups[p.position].push(p);
+      for (const [pos, players] of Object.entries(groups)) {
+        players.forEach((p, i) => fhPlacePlayer(pitchEl, p, spreadX(players.length, i), FH_ROW_Y[pos], captainId, vcId));
+      }
+    }
+
+    function fhRenderBench(benchRowEl, bench) {
+      const { teamColours, abbr, shirtSvg } = FPLKits;
+      benchRowEl.innerHTML = bench.map(p => {
+        const [fill, stroke] = teamColours(p);
+        const fix = p.next_fixture || p.fixture_label;
+        const fixHtml = fix ? `<div class="fh-bench-fix">${fix}</div>` : '';
+        return `<div class="fh-bench-item">
+          <div class="fh-bench-shirt" style="position:relative">${shirtSvg(fill, stroke, abbr(p.web_name))}${fhInjuryBadge(p)}</div>
+          <div class="fh-bench-lbl">${p.web_name}</div>
+          ${fixHtml}
+        </div>`;
+      }).join('');
+    }
+
+    function fhShowView(gameweek, isFH) {
+      const state = _fhState[gameweek];
+      if (!state) return;
+      const pitchEl = document.getElementById(`fh-pitch-${gameweek}`);
+      const benchEl = document.getElementById(`fh-bench-${gameweek}`);
+      const metaEl  = document.getElementById(`fh-meta-${gameweek}`);
+      const btnCur  = document.getElementById(`fh-btn-cur-${gameweek}`);
+      const btnFH   = document.getElementById(`fh-btn-fh-${gameweek}`);
+
+      if (isFH) {
+        fhRenderPitch(pitchEl, state.fhData.starting_xi, state.fhData.captain_id, state.fhData.vice_captain_id);
+        fhRenderBench(benchEl, state.fhData.bench);
+        metaEl.innerHTML = `Free Hit · GW${gameweek} · £${state.fhData.total_cost.toFixed(1)}m / £${state.fhData.budget.toFixed(1)}m · <strong>~${state.fhData.projected_gw_pts} pts</strong>`;
+      } else {
+        const ld = state.lineupData;
+        const bench = [ld.bench_gk, ...(ld.bench_outfield || [])].filter(Boolean);
+        fhRenderPitch(pitchEl, ld.starting_xi, ld.captain.id, ld.vice_captain.id);
+        fhRenderBench(benchEl, bench);
+        metaEl.innerHTML = `Your current squad`;
+      }
+
+      btnCur.style.background = isFH ? 'var(--surface)' : 'var(--primary)';
+      btnCur.style.color = isFH ? 'var(--text-muted)' : '#fff';
+      btnCur.style.borderColor = isFH ? 'var(--border)' : 'var(--primary)';
+      btnFH.style.background = isFH ? 'var(--primary)' : 'var(--surface)';
+      btnFH.style.color = isFH ? '#fff' : 'var(--text-muted)';
+      btnFH.style.borderColor = isFH ? 'var(--primary)' : 'var(--border)';
+    }
+
     async function previewFHSquad(gameweek, btn) {
       const entryId = document.getElementById('entry-id').value.trim();
       const previewEl = document.getElementById(`fh-preview-${gameweek}`);
@@ -650,48 +949,33 @@
       previewEl.innerHTML = '<div style="padding:0.75rem;font-size:0.8125rem;color:var(--text-muted)">Optimising…</div>';
 
       try {
-        const data = await FPL.apiFetch(`/api/v1/fh-squad?entry_id=${entryId}&gameweek=${gameweek}`);
-        previewEl.innerHTML = renderFHSquad(data);
+        const [fhData, lineupData] = await Promise.all([
+          FPL.apiFetch(`/api/v1/fh-squad?entry_id=${entryId}&gameweek=${gameweek}`),
+          FPL.apiFetch(`/api/v1/lineup?entry_id=${entryId}`),
+        ]);
+
+        _fhState[gameweek] = { fhData, lineupData };
+
+        previewEl.innerHTML = `
+          <div style="margin-top:0.5rem">
+            <div class="fh-pitch-toggle">
+              <button id="fh-btn-cur-${gameweek}" onclick="fhShowView(${gameweek}, false)"
+                style="font-size:0.75rem;padding:0.25rem 0.75rem;border-radius:var(--r-md);border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;font-weight:600">Current</button>
+              <button id="fh-btn-fh-${gameweek}" onclick="fhShowView(${gameweek}, true)"
+                style="font-size:0.75rem;padding:0.25rem 0.75rem;border-radius:var(--r-md);border:1.5px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-weight:600">Free Hit squad</button>
+            </div>
+            <div style="font-size:0.6875rem;color:var(--text-muted);text-align:center;margin-bottom:0.375rem" id="fh-meta-${gameweek}"></div>
+            <div class="fh-pitch-wrap" id="fh-pitch-${gameweek}"></div>
+            <div class="fh-bench-row" id="fh-bench-${gameweek}"></div>
+          </div>`;
+
+        fhShowView(gameweek, true);
         btn.style.display = 'none';
       } catch (err) {
         previewEl.innerHTML = `<div style="padding:0.75rem;font-size:0.8125rem;color:var(--error)">${err.message}</div>`;
         btn.disabled = false;
         btn.textContent = 'Preview Free Hit squad →';
       }
-    }
-
-    function renderFHSquad(data) {
-      const POS_ORDER = ['GKP', 'DEF', 'MID', 'FWD'];
-      const byPos = {};
-      POS_ORDER.forEach(p => byPos[p] = []);
-      data.players.forEach(p => { if (byPos[p.position]) byPos[p.position].push(p); });
-
-      const groups = POS_ORDER.map(pos => {
-        const players = byPos[pos];
-        if (!players.length) return '';
-        const rows = players.map(p => `
-          <div class="fh-player-row">
-            <div>
-              <div class="fh-player-name">${p.web_name}</div>
-              <div class="fh-player-team">${p.team_short_name}</div>
-            </div>
-            <div class="fh-player-fix">${p.fixture_label || '—'}</div>
-            <div class="fh-player-price">£${p.price.toFixed(1)}m</div>
-            <div class="fh-player-pts">+${p.projected_pts}</div>
-          </div>`).join('');
-        return `<div class="fh-pos-group">
-          <div class="fh-pos-label">${pos}</div>
-          ${rows}
-        </div>`;
-      }).join('');
-
-      return `<div class="fh-squad-preview" style="display:block;margin-top:0;border:none">
-        <div class="fh-squad-header">
-          <span class="fh-squad-title">Free Hit squad · GW${data.gameweek}</span>
-          <span class="fh-squad-meta">£${data.total_cost.toFixed(1)}m / £${data.budget.toFixed(1)}m · <strong>~${data.projected_gw_pts} pts</strong></span>
-        </div>
-        ${groups}
-      </div>`;
     }
 
     function renderWC(wc, avail) {
@@ -706,9 +990,10 @@
       }
 
       const wcBadge = `<span class="wc-badge">Wildcard ${wcNumber} · GW${wcNumber === 1 ? '1–20' : '21–38'}</span>`;
+      const urgentBadge = wc.urgent ? `<span class="urgent-badge">⚠ Use now</span>` : '';
 
-      return chipCard('wc', 'Wildcard', `GW${wc.gameweek}`,
-        `<p style="margin:0">${wcBadge}</p>
+      const card = chipCard('wc', 'Wildcard', `GW${wc.gameweek}`,
+        `<p style="margin:0">${wcBadge}${urgentBadge}</p>
          <p class="chip-reason">${wc.reason}</p>
          <p class="chip-reason" style="font-size:0.75rem;color:var(--text-muted);margin:0">
            Wildcard completely rebuilds your squad. Use Best Squad to see the optimal 15-man team right now.
@@ -717,6 +1002,9 @@
            Build Wildcard squad →
          </a>`,
         wcAvailable);
+
+      if (wc.urgent) card.classList.add('wc-urgent');
+      return card;
     }
   </script>
 </body>

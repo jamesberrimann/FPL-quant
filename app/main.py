@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1 import (
     health, players, optimize, rating, transfers, lineup, scores,
@@ -50,4 +52,14 @@ app.include_router(mini_league.router, prefix="/api/v1", dependencies=[Depends(v
 app.include_router(projection.router, prefix="/api/v1", dependencies=[Depends(verify_api_key)])
 app.include_router(template.router, prefix="/api/v1", dependencies=[Depends(verify_api_key)])
 
+class NoCacheHTMLMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.endswith(".html") or path == "/" or (not "." in path.split("/")[-1]):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+app.add_middleware(NoCacheHTMLMiddleware)
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

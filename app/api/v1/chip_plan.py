@@ -4,19 +4,21 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import async_session_factory
-from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details, get_entry_history
+from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks, get_entry_details, get_entry_history, get_entry_transfers
 from app.services.player_pool import get_latest_stats, filter_unavailable_players, filter_by_minimum_minutes
 from app.services.prediction import predict_points
 from app.services.fixtures import (
     get_planning_gameweek, get_gameweek_fixture_multipliers, get_next_fixture_labels,
 )
 from app.services.chip_planner import get_chip_windows
-from app.services.optimizer import optimize_squad, InfeasibleBudgetError
+from app.services.optimizer import optimize_freehit_squad, InfeasibleBudgetError
+from app.services.lineup import pick_best_starting_xi
+from app.services.captaincy import score_for_captaincy, get_captain_recommendation
 from app.schemas.chip_plan import (
     ChipPlanOut, ChipAvailability,
     TripleCaptainWindowOut, TCCandidate,
     BenchBoostWindowOut, FreeHitWindowOut, WildcardWindowOut,
-    FHSquadOut, FHSquadPlayerOut,
+    FHSquadOut, FHSquadPlayerOut, RecentGWScore,
 )
 
 router = APIRouter()
@@ -61,8 +63,57 @@ async def chip_plan_route(entry_id: int = Query(...)):
     chips_available = _build_chip_availability(history_data)
     my_element_ids = {pick["element"] for pick in picks_data["picks"]}
 
+    gw_history = sorted(history_data.get("current", []), key=lambda x: x["event"], reverse=True)
+    events_by_id = {e["id"]: e for e in data.get("events", [])}
+
+    # Last 5 GWs for the score strip.
+    recent_scores = [
+        RecentGWScore(
+            gameweek=entry["event"],
+            points=entry.get("points", 0),
+            average=(events_by_id.get(entry["event"]) or {}).get("average_entry_score") or None,
+        )
+        for entry in gw_history[:5]
+    ]
+    recent_scores.reverse()
+
+    # Build performance context: rank slide and below-average streak over last 3 GWs.
+    # Only meaningful if both wildcards are already gone — skip performance logic then.
+    performance_context = None
+    wc_still_available = chips_available.wildcard1 or chips_available.wildcard2
+    if wc_still_available:
+        recent_gws = gw_history[:3]
+
+        rank_slide = 0
+        if len(recent_gws) >= 2:
+            oldest_rank = recent_gws[-1].get("overall_rank") or 0
+            newest_rank = recent_gws[0].get("overall_rank") or 0
+            rank_slide = max(0, newest_rank - oldest_rank)
+
+        below_avg_streak = sum(
+            1 for gw_entry in recent_gws
+            if (avg := (events_by_id.get(gw_entry["event"]) or {}).get("average_entry_score", 0)) > 0
+            and gw_entry.get("points", 0) < avg
+        )
+
+        performance_context = {
+            "rank_slide": rank_slide,
+            "below_avg_streak": below_avg_streak,
+        }
+
     async with async_session_factory() as db:
         planning_gw = await get_planning_gameweek(db, gameweek)
+
+        # Between GWs, layer on any pending transfers so chip logic uses the updated squad.
+        if planning_gw > gameweek:
+            try:
+                transfers = await get_entry_transfers(entry_id)
+                for t in transfers:
+                    if t.get("event") == planning_gw:
+                        my_element_ids.discard(t["element_out"])
+                        my_element_ids.add(t["element_in"])
+            except Exception:
+                pass
         rows = await get_latest_stats(db, gameweek)
         my_rows = [(p, s) for p, s in rows if p.id in my_element_ids]
 
@@ -81,7 +132,11 @@ async def chip_plan_route(entry_id: int = Query(...)):
             for p, s, sc in scored
         ]
 
-        windows = await get_chip_windows(db, squad_players, current_gameweek=planning_gw)
+        windows = await get_chip_windows(
+            db, squad_players,
+            current_gameweek=planning_gw,
+            performance_context=performance_context,
+        )
 
     tc = windows["triple_captain"]
     bb = windows["bench_boost"]
@@ -97,6 +152,8 @@ async def chip_plan_route(entry_id: int = Query(...)):
         free_hit=[FreeHitWindowOut(**w) for w in fh],
         wildcard=WildcardWindowOut(**wc) if wc else None,
         chips_available=chips_available,
+        performance_alert=windows.get("performance_alert"),
+        recent_scores=recent_scores,
     )
 
 
@@ -147,32 +204,54 @@ async def fh_squad_route(
         )
 
         try:
-            squad = optimize_squad(scored, budget=budget)
+            squad = optimize_freehit_squad(scored, budget=budget)
         except InfeasibleBudgetError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
         squad_team_ids = {p.team_id for p, _, _ in squad}
         fixture_labels = await get_next_fixture_labels(db, squad_team_ids, gameweek)
 
+        lineup = pick_best_starting_xi(squad)
+        captain_scored = await score_for_captaincy(lineup["starting_xi"], db, gameweek)
+
+    rec = get_captain_recommendation(captain_scored)
+    captain_id = rec["top_pick"]["player"].id
+    vice_captain_id = rec["second_pick"]["player"].id
+
     total_cost = round(sum(float(s.price) for _, s, _ in squad), 1)
     projected_gw_pts = round(sum(sc for _, _, sc in squad), 1)
 
-    players = [
-        FHSquadPlayerOut(
+    def to_fh_player(p, s, sc):
+        return FHSquadPlayerOut(
+            id=p.id,
             web_name=p.web_name,
             position=p.position.value,
             team_short_name=team_map.get(p.team_id, "UNK"),
             price=float(s.price),
             projected_pts=round(sc, 1),
             fixture_label=fixture_labels.get(p.team_id),
+            status=s.status,
+            chance_of_playing_next_round=s.chance_of_playing_next_round,
         )
+
+    players = [
+        to_fh_player(p, s, sc)
         for p, s, sc in sorted(squad, key=lambda x: (
             ["GKP", "DEF", "MID", "FWD"].index(x[0].position.value), -x[2]
         ))
     ]
+    starting_xi = [to_fh_player(p, s, sc) for p, s, sc in lineup["starting_xi"]]
+    bench_list = []
+    if lineup["bench_gk"]:
+        bench_list.append(to_fh_player(*lineup["bench_gk"]))
+    bench_list += [to_fh_player(p, s, sc) for p, s, sc in lineup["bench_outfield"]]
 
     return FHSquadOut(
         players=players,
+        starting_xi=starting_xi,
+        bench=bench_list,
+        captain_id=captain_id,
+        vice_captain_id=vice_captain_id,
         total_cost=total_cost,
         projected_gw_pts=projected_gw_pts,
         budget=budget,

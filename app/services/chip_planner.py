@@ -10,10 +10,15 @@ _BB_DGW_THRESHOLD = 3
 _FH_BLANK_THRESHOLD = 5
 
 
+_RANK_SLIDE_THRESHOLD = 200_000
+_BELOW_AVG_STREAK_THRESHOLD = 2
+
+
 async def get_chip_windows(
     db: AsyncSession,
     squad_players: list[dict],
     current_gameweek: int,
+    performance_context: dict | None = None,
 ) -> dict:
     """Scan all remaining gameweeks and return optimal chip timing for the season.
 
@@ -187,7 +192,7 @@ async def get_chip_windows(
                 "squad_projected_pts": squad_projected_pts,
             })
 
-    # ── Wildcard: GW before fixture difficulty spikes for the squad.
+    # ── Wildcard: poor performance OR fixture difficulty cliff.
     avg_mults: dict[int, float] = {}
     for gw in gw_range:
         mults = multipliers_by_gw[gw]
@@ -195,25 +200,58 @@ async def get_chip_windows(
         avg_mults[gw] = sum(vals) / len(vals) if vals else 0.0
 
     wildcard = None
-    gw_list = list(gw_range)
-    for i in range(len(gw_list) - 1):
-        gw_now = gw_list[i]
-        gw_next = gw_list[i + 1]
-        if avg_mults[gw_now] > 0 and avg_mults[gw_next] < avg_mults[gw_now] * 0.75:
-            wc_number = 1 if gw_now <= 20 else 2
+    performance_alert = None
+
+    if performance_context:
+        rank_slide = performance_context.get("rank_slide", 0)
+        below_avg_streak = performance_context.get("below_avg_streak", 0)
+
+        if rank_slide >= _RANK_SLIDE_THRESHOLD or below_avg_streak >= _BELOW_AVG_STREAK_THRESHOLD:
+            wc_number = 1 if current_gameweek <= 20 else 2
+            reasons = []
+            if rank_slide >= _RANK_SLIDE_THRESHOLD:
+                reasons.append(f"rank has dropped {rank_slide:,} places in recent weeks")
+            if below_avg_streak >= _BELOW_AVG_STREAK_THRESHOLD:
+                reasons.append(
+                    f"scored below the FPL average in {below_avg_streak} of your last 3 gameweeks"
+                )
+            reason_str = " and ".join(reasons)
+            performance_alert = (
+                f"Your team is struggling — {reason_str}. "
+                f"A Wildcard lets you rebuild completely with the best available players."
+            )
             wildcard = {
-                "gameweek": gw_now,
+                "gameweek": current_gameweek,
                 "reason": (
-                    f"Fixture difficulty rises sharply after GW{gw_now} for your squad. "
-                    f"Wildcarding in GW{gw_now} lets you bring in players with better upcoming runs."
+                    f"Your team is struggling — {reason_str}. "
+                    f"Wildcarding now lets you completely rebuild with the best players for the weeks ahead."
                 ),
                 "wc_number": wc_number,
+                "urgent": True,
             }
-            break
+
+    if wildcard is None:
+        gw_list = list(gw_range)
+        for i in range(len(gw_list) - 1):
+            gw_now = gw_list[i]
+            gw_next = gw_list[i + 1]
+            if avg_mults[gw_now] > 0 and avg_mults[gw_next] < avg_mults[gw_now] * 0.75:
+                wc_number = 1 if gw_now <= 20 else 2
+                wildcard = {
+                    "gameweek": gw_now,
+                    "reason": (
+                        f"Fixture difficulty rises sharply after GW{gw_now} for your squad. "
+                        f"Wildcarding in GW{gw_now} lets you bring in players with better upcoming runs."
+                    ),
+                    "wc_number": wc_number,
+                    "urgent": False,
+                }
+                break
 
     return {
         "triple_captain": triple_captain,
         "bench_boost": bench_boost,
         "free_hit": free_hit_windows,
         "wildcard": wildcard,
+        "performance_alert": performance_alert,
     }

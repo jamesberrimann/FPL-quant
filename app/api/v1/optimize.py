@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.services.squad_builder import build_optimal_squad, get_budget_sensitivity
-from app.services.optimizer import InfeasibleBudgetError
+from app.services.optimizer import optimize_squad, optimize_freehit_squad, InfeasibleBudgetError
 from app.services.lineup import pick_best_starting_xi
 from app.services.captaincy import score_for_captaincy, get_captain_recommendation, get_captaincy_explanation
 from app.services.fixtures import get_next_fixture_labels, get_planning_gameweek, get_gameweek_fixture_multipliers
 from app.services.prediction import predict_points
 from app.services.squad_rating import compute_ratings
-from app.services.player_pool import get_latest_stats
+from app.services.player_pool import get_latest_stats, filter_unavailable_players, filter_by_minimum_minutes
 from app.core.db import async_session_factory
 from app.schemas.squad import SquadOut, SquadPlayerOut, BudgetSensitivityOut, BudgetStepOut
 from app.ingestion.fpl_client import get_bootstrap_static
@@ -29,13 +29,31 @@ async def budget_sensitivity_route(
     response_model=SquadOut,
     responses={422: {"description": "Budget too low to build a legal 15-man squad"}},
 )
-async def optimize_squad_route(budget: float = Query(default=100.0)):
+async def optimize_squad_route(
+    budget: float = Query(default=100.0),
+    mode: str = Query(default="wildcard", pattern="^(wildcard|freehit)$"),
+):
     data = await get_bootstrap_static()
     gameweek = next(e["id"] for e in data["events"] if e["is_current"])
     team_map = {t["id"]: t["short_name"] for t in data.get("teams", [])}
 
     try:
-        squad = await build_optimal_squad(budget=budget)
+        if mode == "freehit":
+            async with async_session_factory() as db:
+                planning_gw = await get_planning_gameweek(db, gameweek)
+                rows = await get_latest_stats(db, gameweek)
+                rows = filter_unavailable_players(rows)
+                rows = filter_by_minimum_minutes(rows)
+                team_ids_all = {p.team_id for p, _ in rows}
+                gw_mults = await get_gameweek_fixture_multipliers(db, team_ids_all, planning_gw)
+                scored_all = await predict_points(
+                    rows, db, gameweek=gameweek,
+                    fixture_from_gameweek=planning_gw, num_fixtures=1,
+                    fixture_count_multipliers=gw_mults,
+                )
+                squad = optimize_freehit_squad(scored_all, budget=budget)
+        else:
+            squad = await build_optimal_squad(budget=budget)
     except InfeasibleBudgetError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -44,9 +62,6 @@ async def optimize_squad_route(budget: float = Query(default=100.0)):
         team_ids = {player.team_id for player, stats, score in squad}
         fixture_labels = await get_next_fixture_labels(db, team_ids, planning_gw)
 
-        # Re-score the squad on num_fixtures=1 for lineup selection.
-        # Squad building uses a 3-fixture average to pick long-term value;
-        # the starting XI decision should reflect next week's fixture only.
         squad_rows = [(player, stats) for player, stats, _ in squad]
         gw_scored_raw = await predict_points(
             squad_rows, db, gameweek=gameweek,
