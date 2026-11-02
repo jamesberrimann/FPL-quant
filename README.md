@@ -1,8 +1,8 @@
 # FPL Decision-Support Tool
 
-A personal project I built to make better Fantasy Premier League decisions. It ingests live gameweek data from the public FPL API and uses a linear-programming optimizer, position-aware scoring, and real fixture/reliability signals to help with squad building, transfers, lineup selection, and captaincy.
+A personal project I built to make better Fantasy Premier League decisions. It ingests live gameweek data from the public FPL API and uses a linear-programming optimizer, position-aware scoring, and real fixture/reliability signals to help with squad building, transfers, lineup selection, captaincy, and chip strategy.
 
-I built this primarily as a portfolio project while studying CS and Business Computing at UCT. The goal was to build something genuinely useful, not just a tutorial rehash, so I tried to solve real FPL edge cases: fixture timing, regression risk, captain ceiling vs. reliability, and live vs. stale score data.
+I built this primarily as a portfolio project while studying CS and Business Computing at UCT. The goal was to build something genuinely useful, not just a tutorial rehash, so I tried to solve real FPL edge cases: fixture timing, regression risk, captain ceiling vs. reliability, chip timing, and live vs. stale score data.
 
 ---
 
@@ -20,11 +20,20 @@ Generates ranked, deduplicated transfer suggestions with a shared depleting budg
 **Lineup and captaincy**
 Selects the best legal starting XI and formation from your squad and orders the bench. Captain and vice-captain are picked using a separate ceiling-weighted model tuned for single-gameweek explosiveness rather than season-long reliability. Reports honestly when a recommendation required breaking a statistical tie.
 
+**Chip planner**
+Scans the full remaining season and recommends optimal timing for all four chips. Triple Captain finds your best player's peak DGW or strongest fixture window. Bench Boost targets the GW with the most double gameweek players in your squad. Free Hit detects blank gameweeks where five or more of your players have no fixture and builds an optimal replacement squad using your actual budget. Wildcard timing is driven by two signals: a fixture difficulty cliff (squad-average fixture ease drops 25%+ week on week) and performance deterioration (overall rank dropping 200k+ or scoring below the FPL average in two of the last three gameweeks). When the performance signal fires, the wildcard card is flagged urgent and a warning banner appears at the top of the page.
+
+**Recent form tracker**
+The chip planner page shows your last five gameweek scores alongside the FPL average for each week. Each score is colour-coded green (above average) or red (below) with a +/- diff badge so you can see at a glance how your team is performing relative to the field.
+
 **Live scores and events**
 Returns current gameweek scores and per-player events (goals, assists, bonus, defensive contribution). Correctly distinguishes genuinely live data from a player or team's last-played match when the current fixture has not kicked off yet.
 
 **Fixture planning view**
 A 6-gameweek heatmap showing upcoming fixture difficulty across your squad, useful for planning chip timing and rotation.
+
+**Pending transfer detection**
+Between gameweeks, the app fetches your confirmed transfers from the FPL transfers API and applies them on top of the last locked squad. This means the lineup and chip planner pages always reflect players you have already transferred in, not just the squad that played the previous week.
 
 ---
 
@@ -87,11 +96,12 @@ app/
 ├── schemas/       Pydantic request/response models
 ├── ingestion/     FPL API client with retry logic and data mappers
 ├── services/      all business logic (scoring, optimizer, lineup, captaincy,
-│                  transfers, scores, fixtures, squad builder, squad rating)
+│                  transfers, scores, fixtures, chip planner, squad builder,
+│                  squad rating)
 └── api/v1/        versioned route handlers, one file per feature
 
 frontend/          standalone HTML pages: index, optimize, rate-squad,
-                   transfers, lineup, fixture-plan
+                   transfers, lineup, fixture-plan, chips
 
 tests/
 ├── api/           route-level integration tests
@@ -110,6 +120,9 @@ FPL publishes `strength_attack_home/away` etc. on each team, but these have been
 
 **Captaincy uses a different model from general scoring.**
 The general scoring model weights reliability (minutes played, consistency) heavily because you want it for the full season. Captaincy is a single-gameweek decision where ceiling matters more, so the captain model up-weights form and expected goals and down-weights the reliability penalties.
+
+**Wildcard recommendations use two independent signals.**
+Fixture-based detection finds the gameweek where your squad's average fixture count drops sharply, indicating you should rebuild before the run gets harder. Performance-based detection reads your actual rank trend and points-vs-average from the FPL history API and triggers when the team is objectively underperforming. Either signal can independently recommend an immediate wildcard; the performance signal takes priority when both fire.
 
 **The optimizer raises an error on infeasible budgets rather than returning a partial result.**
 Some LP solvers return whatever partial solution they found when a problem is infeasible. I check the solver status explicitly and raise `InfeasibleBudgetError` (which surfaces as a 422) so the caller knows nothing legal was found.
