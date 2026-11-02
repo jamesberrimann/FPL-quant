@@ -180,6 +180,79 @@ export default function OptiScreen() {
           </View>
         )}
 
+        {/* Wildcard rating block */}
+        {mode === 'wildcard' && bestData && displayXi.length > 0 && (() => {
+          const score    = bestData.squad_score ?? null;
+          const allP: any[] = bestData.players ?? [];
+          const top3     = [...allP].sort((a, b) => (b.percentile ?? 0) - (a.percentile ?? 0)).slice(0, 3);
+          const flagged  = allP.filter(p => p.flag);
+          if (score == null) return null;
+          const label = score >= 80 ? 'Excellent' : score >= 65 ? 'Strong' : score >= 50 ? 'Average' : 'Below average';
+          const scoreColor = score >= 70 ? colors.success : score >= 50 ? colors.gold : colors.error;
+          return (
+            <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder, gap: spacing.lg }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 40, fontWeight: fontWeight.black, color: scoreColor, lineHeight: 44, fontVariant: ['tabular-nums'] }}>{Math.round(score)}</Text>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: fontWeight.semibold }}>/ 100</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 }}>{label}</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 17 }}>Blends form, fixture difficulty, and underlying stats. Percentile vs all players at that position.</Text>
+                </View>
+              </View>
+              {top3.length > 0 && (
+                <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: flagged.length > 0 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}>
+                  <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7, marginBottom: spacing.sm }}>STRONGEST PLAYERS</Text>
+                  {top3.map((p: any, i: number) => (
+                    <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.surfaceBorder }}>
+                      <View>
+                        <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
+                        <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>{p.position} · {p.team_short_name}</Text>
+                      </View>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.success }}>{Math.round(p.percentile)}th %ile</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {flagged.length > 0 && (
+                <View style={{ padding: spacing.lg }}>
+                  <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.warning, letterSpacing: 0.7, marginBottom: spacing.md }}>REGRESSION RISK</Text>
+                  {flagged.map((p: any) => (
+                    <View key={p.id} style={{ marginBottom: spacing.md }}>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
+                      <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 3, lineHeight: 17 }}>{p.flag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })()}
+
+        {/* Free Hit top scorers block */}
+        {mode === 'freehit' && fhData && displayXi.length > 0 && (() => {
+          const allP: any[] = fhData.players ?? [];
+          const top3 = [...allP].sort((a, b) => (b.projected_pts ?? 0) - (a.projected_pts ?? 0)).slice(0, 3);
+          if (!top3.length) return null;
+          return (
+            <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
+                <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7, marginBottom: spacing.sm }}>TOP PROJECTED SCORERS</Text>
+                {top3.map((p: any, i: number) => (
+                  <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.surfaceBorder }}>
+                    <View>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
+                      <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>{p.position} · {p.team_short_name}{p.fixture_label ? ` · ${p.fixture_label}` : ''}</Text>
+                    </View>
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.success }}>~{p.projected_pts?.toFixed(1)} pts</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
         {/* Player list */}
         {displayXi.length > 0 && (
           <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
