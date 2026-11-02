@@ -1,34 +1,34 @@
 export const colors = {
-  // FPL purple palette
-  bg:           '#37003c',
-  surface:      '#4a0050',
-  surfaceRaised:'#5c0065',
-  surfaceBorder:'rgba(255,255,255,0.1)',
-  nav:          '#250029',
+  // Turquoise palette
+  bg:           '#006d77',
+  surface:      '#007a82',
+  surfaceRaised:'#008892',
+  surfaceBorder:'rgba(255,255,255,0.12)',
+  nav:          '#005560',
 
-  // Brand — FPL green
+  // Brand green
   primary:      '#00ff87',
   primaryDim:   '#00cc6a',
   primaryMuted: 'rgba(0,255,135,0.15)',
 
   // Accent
-  gold:         '#f59e0b',
-  goldDim:      '#d97706',
-  goldMuted:    'rgba(245,158,11,0.15)',
+  gold:         '#fbbf24',
+  goldDim:      '#f59e0b',
+  goldMuted:    'rgba(251,191,36,0.15)',
 
   // Text
   text:         '#ffffff',
-  textSecondary:'rgba(255,255,255,0.8)',
-  textMuted:    'rgba(255,255,255,0.5)',
-  textSubtle:   'rgba(255,255,255,0.25)',
+  textSecondary:'rgba(255,255,255,0.82)',
+  textMuted:    'rgba(255,255,255,0.52)',
+  textSubtle:   'rgba(255,255,255,0.26)',
 
   // Semantic
   success:      '#00ff87',
   successMuted: 'rgba(0,255,135,0.15)',
-  error:        '#ff4d4d',
-  errorMuted:   'rgba(255,77,77,0.15)',
-  warning:      '#f59e0b',
-  warningMuted: 'rgba(245,158,11,0.15)',
+  error:        '#ff5c5c',
+  errorMuted:   'rgba(255,92,92,0.15)',
+  warning:      '#fbbf24',
+  warningMuted: 'rgba(251,191,36,0.15)',
 
   // Utility
   white:        '#ffffff',

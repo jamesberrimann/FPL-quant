@@ -233,7 +233,7 @@ export function BenchRow({ players }: { players: any[] }) {
   return (
     <View style={{
       flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center',
-      backgroundColor: '#250029', paddingVertical: 14,
+      backgroundColor: '#005560', paddingVertical: 14,
       borderTopWidth: 2, borderTopColor: 'rgba(255,255,255,0.1)',
     }}>
       {players.map(p => {

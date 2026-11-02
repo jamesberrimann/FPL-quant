@@ -1,24 +1,23 @@
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
+import { Header } from '../../components/Header';
 
 const PLAYER_COL = 88;
 const GW_COL     = 54;
 
 function fdrStyle(fdr: number) {
   if (fdr <= 2) return { bg: '#00cc57', text: '#003d1a' };
-  if (fdr === 3) return { bg: '#e0e0e0', text: '#333333' };
+  if (fdr === 3) return { bg: '#d4d4d4', text: '#2a2a2a' };
   if (fdr === 4) return { bg: '#ff4d4d', text: '#ffffff' };
-  return { bg: '#8b0000', text: '#ffffff' };
+  return { bg: '#7f0000', text: '#ffffff' };
 }
 
 const POS_ORDER = ['GKP', 'DEF', 'MID', 'FWD'];
 
 export default function FixturesScreen() {
-  const insets = useSafeAreaInsets();
   const { entryId } = useEntryId();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -27,9 +26,7 @@ export default function FixturesScreen() {
     enabled: !!entryId,
   });
 
-  const players = [...(data?.players ?? [])].sort(
-    (a, b) => POS_ORDER.indexOf(a.position) - POS_ORDER.indexOf(b.position),
-  );
+  const players  = [...(data?.players ?? [])].sort((a, b) => POS_ORDER.indexOf(a.position) - POS_ORDER.indexOf(b.position));
   const numGws   = data?.num_gameweeks ?? 0;
   const fromGw   = data?.from_gameweek ?? 0;
   const gwLabels = Array.from({ length: numGws }, (_, i) => fromGw + i);
@@ -37,21 +34,17 @@ export default function FixturesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingTop: insets.top, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-        <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.black, color: colors.text, letterSpacing: -0.3 }}>Fixtures</Text>
-        {numGws > 0 && <Text style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>GW{fromGw} — GW{fromGw + numGws - 1}</Text>}
-      </View>
+      <Header title="Fixtures" subtitle={numGws > 0 ? `GW${fromGw} — GW${fromGw + numGws - 1}` : undefined} />
 
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.primary} />}
-        contentContainerStyle={{ paddingBottom: spacing.xxxl + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: spacing.xxxl }}
       >
         {isLoading && <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 48, fontSize: fontSize.sm }}>Loading...</Text>}
 
         {players.length > 0 && (
-          <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
+          <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ width: tableW }}>
                 <View style={{ flexDirection: 'row', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder }}>
@@ -64,30 +57,20 @@ export default function FixturesScreen() {
                 </View>
 
                 {players.map((player, idx) => (
-                  <View
-                    key={player.player_id}
-                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: spacing.md, borderBottomWidth: idx < players.length - 1 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}
-                  >
+                  <View key={player.player_id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: spacing.md, borderBottomWidth: idx < players.length - 1 ? 1 : 0, borderBottomColor: colors.surfaceBorder }}>
                     <View style={{ width: PLAYER_COL }}>
                       <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }} numberOfLines={1}>{player.web_name}</Text>
                       <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 1 }}>{player.position}</Text>
                     </View>
-
                     {(player.gameweek_slots ?? []).map((slot: any, si: number) => {
-                      if (slot.is_blank) return (
-                        <View key={si} style={{ width: GW_COL, alignItems: 'center' }}>
-                          <Text style={{ fontSize: 12, color: colors.textSubtle }}>—</Text>
-                        </View>
-                      );
+                      if (slot.is_blank) return <View key={si} style={{ width: GW_COL, alignItems: 'center' }}><Text style={{ fontSize: 12, color: colors.textSubtle }}>—</Text></View>;
                       const opp = slot.opponents?.[0];
                       if (!opp) return <View key={si} style={{ width: GW_COL }} />;
                       const { bg, text } = fdrStyle(opp.fdr ?? slot.avg_fdr ?? 3);
                       return (
                         <View key={si} style={{ width: GW_COL, alignItems: 'center', gap: 2 }}>
-                          <View style={{ paddingHorizontal: 5, paddingVertical: 3, backgroundColor: bg, borderRadius: 4, minWidth: 42, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: text }}>
-                              {opp.short_name}({opp.is_home ? 'H' : 'A'})
-                            </Text>
+                          <View style={{ paddingHorizontal: 4, paddingVertical: 3, backgroundColor: bg, borderRadius: 4, minWidth: 42, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: text }}>{opp.short_name}({opp.is_home ? 'H' : 'A'})</Text>
                           </View>
                           {slot.is_double && <Text style={{ fontSize: 8, fontWeight: fontWeight.black, color: colors.gold }}>DGW</Text>}
                         </View>
