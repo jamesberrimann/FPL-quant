@@ -17,10 +17,10 @@
     <div class="hero">
       <div class="hero-eyebrow" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-        Linear-programming optimizer
+        8 tools · real-time FPL data
       </div>
       <h1>FPL Decision-Support Tool</h1>
-      <p>Data-driven squad building, transfer suggestions, lineup picks, and chip planning — powered by a position-aware scoring model and real fixture signals.</p>
+      <p>Data-driven squad building, Wildcard &amp; Free Hit optimization, transfer suggestions, lineup picks, live GW scores, league standings, and chip planning — powered by a position-aware scoring model and real fixture signals.</p>
     </div>
 
     <div id="health-row" class="health-row" role="status" aria-live="polite">
@@ -42,7 +42,7 @@
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
         </div>
         <div class="card-title">Best Squad</div>
-        <div class="card-desc">Build the best possible 15-man squad from scratch under a budget using integer programming, respecting position and club constraints.</div>
+        <div class="card-desc">Build the optimal 15-man squad under a £95m–£105m budget (Wildcard mode) or for a specific blank gameweek using your actual budget (Free Hit mode), with pitch view and squad rating.</div>
       </a>
 
       <a class="feature-card" href="/rate-squad.html" data-feature="rating">
@@ -66,7 +66,7 @@
           <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
         </div>
         <div class="card-title">Pick Team</div>
-        <div class="card-desc">Best legal starting XI, bench order, captain recommendation, auto-sub simulation, and chip planner — all in one place.</div>
+        <div class="card-desc">Best legal starting XI on a pitch view, bench order, captain &amp; vice-captain picks, differential captain suggestion, auto-sub simulation, and a before/after-transfers toggle.</div>
       </a>
 
       <a class="feature-card" href="/fixture-plan.html" data-feature="fixtures">
@@ -83,6 +83,22 @@
         </div>
         <div class="card-title">Chip Planner</div>
         <div class="card-desc">Season-wide chip strategy with availability tracking, TC candidate rankings, Bench Boost projections, and Free Hit blank gameweek detection.</div>
+      </a>
+
+      <a class="feature-card" href="/gw-points.html" data-feature="gwpoints">
+        <div class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="card-title">GW Points</div>
+        <div class="card-desc">Live gameweek score for every player in your squad, with captain multiplier applied, refreshing automatically during an active gameweek.</div>
+      </a>
+
+      <a class="feature-card" href="/league.html" data-feature="league">
+        <div class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="card-title">League Standings</div>
+        <div class="card-desc">Your rank and points in every mini-league, gap to the leader, and a head-to-head breakdown against nearby rivals — updated live during a gameweek.</div>
       </a>
 
     </div>

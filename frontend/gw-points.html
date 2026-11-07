@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>(function(){var t=localStorage.getItem("fpl_theme"),d=document.documentElement;var isDark=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);d.setAttribute("data-theme",isDark?"dark":"light");d.style.background=isDark?"#0a160d":"#f5f6f5";d.style.colorScheme=isDark?"dark":"light";})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
+  <title>GW Points — FPL Tool</title>
+  <link rel="stylesheet" href="/style.css?v=12">
+  <style>
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem; border-radius: 20px;
+      background: #dcfce7; color: #15803d;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .total-row {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      margin: 1rem 0 0.25rem;
+    }
+    .total-pts {
+      font-size: 2.5rem; font-weight: 900; line-height: 1;
+      color: var(--primary);
+    }
+    .total-label {
+      font-size: 0.875rem; color: var(--text-muted); font-weight: 500;
+    }
+    .player-table {
+      width: 100%; border-collapse: collapse; margin-top: 0.75rem;
+    }
+    .player-table th {
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-muted);
+      text-align: left; padding: 0.4rem 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .player-table th.right, .player-table td.right { text-align: right; }
+    .player-table td {
+      font-size: 0.8125rem; padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .player-table tr:last-child td { border-bottom: none; }
+    .player-table tr.bench td { opacity: 0.55; }
+    .player-name { font-weight: 600; }
+    .player-pos  { font-size: 0.6875rem; color: var(--text-muted); font-weight: 500; margin-top: 1px; }
+    .pts-cell    { font-size: 0.9375rem; font-weight: 800; color: var(--text); }
+    .pts-cell.zero { color: var(--text-muted); font-weight: 500; }
+    .cap-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      font-size: 8px; font-weight: 900; color: #fff;
+      margin-left: 0.3rem; vertical-align: middle;
+    }
+    .cap-badge.c  { background: #f59e0b; }
+    .cap-badge.vc { background: #94a3b8; }
+    .not-played { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+    .refresh-note {
+      font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <script src="/nav.js?v=7"></script>
+  <div class="container">
+    <h1>GW Points</h1>
+
+    <div class="controls">
+      <label>Entry ID
+        <input type="number" id="entry-id" placeholder="e.g. 1234567">
+      </label>
+      <button id="run-btn" onclick="run()">Get Points</button>
+    </div>
+
+    <p class="msg msg-error" id="error"></p>
+    <div class="loading" id="loading"><div class="spinner"></div>Loading…</div>
+
+    <div id="results" style="display:none">
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <span id="gw-label" style="font-size:1rem;font-weight:700;color:var(--text-muted)"></span>
+        <span id="live-pill" style="display:none" class="live-pill"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <div class="total-row">
+        <span class="total-pts" id="total-pts">0</span>
+        <span class="total-label">points</span>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden">
+        <table class="player-table" id="player-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Pos</th>
+              <th class="right">Pts</th>
+            </tr>
+          </thead>
+          <tbody id="player-body"></tbody>
+        </table>
+      </div>
+
+      <p class="refresh-note" id="refresh-note"></p>
+    </div>
+  </div>
+
+  <script>
+    let _refreshTimer = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = FPL.getEntryId();
+      if (saved) document.getElementById('entry-id').value = saved;
+      document.getElementById('entry-id').addEventListener('change', () =>
+        FPL.setEntryId(document.getElementById('entry-id').value));
+    });
+
+    async function run() {
+      const btn = document.getElementById('run-btn');
+      document.getElementById('results').style.display = 'none';
+      FPL.clearError(); FPL.setLoading(true, btn);
+      if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+
+      const entryId = document.getElementById('entry-id').value.trim();
+      FPL.setEntryId(entryId);
+
+      try {
+        await loadPoints(entryId);
+        document.getElementById('results').style.display = '';
+      } catch (err) {
+        FPL.showError(err.message);
+      } finally {
+        FPL.setLoading(false, btn);
+      }
+    }
+
+    async function loadPoints(entryId) {
+      const data = await FPL.apiFetch(`/api/v1/squad-gw-points?entry_id=${entryId}`);
+      render(data);
+
+      if (data.is_live_gw) {
+        if (_refreshTimer) clearInterval(_refreshTimer);
+        _refreshTimer = setInterval(async () => {
+          try { render(await FPL.apiFetch(`/api/v1/squad-gw-points?entry_id=${entryId}`)); }
+          catch {}
+        }, 120_000);
+        document.getElementById('refresh-note').textContent = 'Auto-refreshing every 2 minutes.';
+      } else {
+        document.getElementById('refresh-note').textContent = '';
+      }
+    }
+
+    function render(data) {
+      document.getElementById('gw-label').textContent = `Gameweek ${data.gameweek}`;
+      document.getElementById('live-pill').style.display = data.is_live_gw ? '' : 'none';
+
+      const starters = data.players.filter(p => p.position_in_squad <= 11).sort((a, b) => a.position_in_squad - b.position_in_squad);
+      const bench    = data.players.filter(p => p.position_in_squad > 11).sort((a, b) => a.position_in_squad - b.position_in_squad);
+
+      const totalPts = data.players
+        .filter(p => p.position_in_squad <= 11)
+        .reduce((s, p) => s + p.points * p.multiplier, 0);
+      document.getElementById('total-pts').textContent = totalPts;
+
+      const tbody = document.getElementById('player-body');
+      tbody.innerHTML = [...starters, ...bench].map(p => {
+        const isBench = p.position_in_squad > 11;
+        const pts = p.points * p.multiplier;
+        const capBadge = p.is_captain
+          ? '<span class="cap-badge c" title="Captain (×2)">C</span>'
+          : p.is_vice_captain ? '<span class="cap-badge vc" title="Vice-captain">V</span>' : '';
+        const ptsHtml = !p.has_played
+          ? '<span class="not-played">—</span>'
+          : `<span class="pts-cell${pts === 0 ? ' zero' : ''}">${pts}</span>`;
+        const benchLabel = isBench ? ' <span style="font-size:0.625rem;color:var(--text-muted);font-weight:500">(bench)</span>' : '';
+        return `<tr${isBench ? ' class="bench"' : ''}>
+          <td><span class="player-name">${p.web_name}${capBadge}</span>${benchLabel}</td>
+          <td style="color:var(--text-muted);font-size:0.75rem;font-weight:500">pos ${p.position_in_squad}</td>
+          <td class="right">${ptsHtml}</td>
+        </tr>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

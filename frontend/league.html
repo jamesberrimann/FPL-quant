@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>(function(){var t=localStorage.getItem("fpl_theme"),d=document.documentElement;var isDark=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);d.setAttribute("data-theme",isDark?"dark":"light");d.style.background=isDark?"#0a160d":"#f5f6f5";d.style.colorScheme=isDark?"dark":"light";})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
+  <title>League Standings — FPL Tool</title>
+  <link rel="stylesheet" href="/style.css?v=12">
+  <style>
+    .league-block {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+      overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .league-header {
+      padding: 0.875rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .league-name {
+      font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;
+    }
+    .league-meta {
+      display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: baseline;
+    }
+    .league-meta-item {
+      font-size: 0.75rem; color: var(--text-muted);
+    }
+    .league-meta-item strong {
+      font-size: 0.9375rem; font-weight: 800; color: var(--text); display: block;
+    }
+    .gap-negative { color: var(--error, #dc2626) !important; }
+    .gap-zero     { color: var(--success, #16a34a) !important; }
+    .rivals-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .rivals-table th {
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-muted);
+      text-align: left; padding: 0.5rem 1rem 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .rivals-table th.right, .rivals-table td.right { text-align: right; }
+    .rivals-table td {
+      font-size: 0.8125rem; padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .rivals-table tr:last-child td { border-bottom: none; }
+    .rank-cell { font-weight: 700; color: var(--text-muted); font-size: 0.75rem; width: 2rem; }
+    .manager-name { font-weight: 600; }
+    .gap-cell { font-size: 0.75rem; font-weight: 600; }
+    .gap-cell.ahead  { color: var(--success, #16a34a); }
+    .gap-cell.behind { color: var(--error, #dc2626); }
+    .gap-cell.tied   { color: var(--text-muted); }
+    .you-row td { background: var(--primary-subtle, rgba(99,102,241,.07)); font-weight: 700; }
+    .you-badge {
+      font-size: 0.625rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 0.1rem 0.4rem; border-radius: 4px;
+      background: var(--primary); color: #fff; margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <script src="/nav.js?v=7"></script>
+  <div class="container">
+    <h1>League Standings</h1>
+
+    <div class="controls">
+      <label>Entry ID
+        <input type="number" id="entry-id" placeholder="e.g. 1234567">
+      </label>
+      <button id="run-btn" onclick="run()">Get Standings</button>
+    </div>
+
+    <p class="msg msg-error" id="error"></p>
+    <div class="loading" id="loading"><div class="spinner"></div>Loading…</div>
+
+    <div id="results" style="display:none"></div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = FPL.getEntryId();
+      if (saved) document.getElementById('entry-id').value = saved;
+      document.getElementById('entry-id').addEventListener('change', () =>
+        FPL.setEntryId(document.getElementById('entry-id').value));
+    });
+
+    async function run() {
+      const btn = document.getElementById('run-btn');
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('results').innerHTML = '';
+      FPL.clearError(); FPL.setLoading(true, btn);
+
+      const entryId = document.getElementById('entry-id').value.trim();
+      FPL.setEntryId(entryId);
+
+      try {
+        const data = await FPL.apiFetch(`/api/v1/mini-league?entry_id=${entryId}`);
+        render(data, entryId);
+        document.getElementById('results').style.display = '';
+      } catch (err) {
+        FPL.showError(err.message);
+      } finally {
+        FPL.setLoading(false, btn);
+      }
+    }
+
+    function gapLabel(gap) {
+      if (gap === 0) return { text: 'Level', cls: 'tied' };
+      if (gap > 0)   return { text: `+${gap} ahead`, cls: 'ahead' };
+      return { text: `${gap} behind`, cls: 'behind' };
+    }
+
+    function render(data, myEntryId) {
+      const container = document.getElementById('results');
+      if (!data.leagues || data.leagues.length === 0) {
+        container.innerHTML = '<p class="msg msg-error">No mini-leagues found for this entry.</p>';
+        return;
+      }
+
+      container.innerHTML = data.leagues.map(lg => {
+        const leaderGap = gapLabel(-lg.gap_to_leader);
+        const gapClass = lg.gap_to_leader === 0 ? 'gap-zero' : lg.gap_to_leader > 0 ? 'gap-negative' : '';
+
+        const rivalsRows = lg.rivals.map(r => {
+          const isMe = r.rank === lg.entry_rank && r.pts === lg.entry_pts;
+          const g = gapLabel(lg.entry_pts - r.pts);
+          return `<tr${isMe ? ' class="you-row"' : ''}>
+            <td class="rank-cell">${r.rank}</td>
+            <td class="manager-name">${r.manager}${isMe ? '<span class="you-badge">YOU</span>' : ''}</td>
+            <td class="right" style="font-weight:700">${r.pts}</td>
+            <td class="right gap-cell ${g.cls}">${isMe ? '—' : g.text}</td>
+          </tr>`;
+        }).join('');
+
+        return `<div class="league-block">
+          <div class="league-header">
+            <div class="league-name">${lg.league_name}</div>
+            <div class="league-meta">
+              <div class="league-meta-item">
+                <strong>${lg.entry_rank}</strong>Your rank
+              </div>
+              <div class="league-meta-item">
+                <strong>${lg.entry_pts} pts</strong>Your total
+              </div>
+              <div class="league-meta-item">
+                <strong class="${gapClass}">${lg.gap_to_leader === 0 ? 'Leading' : `−${lg.gap_to_leader}`}</strong>
+                ${lg.gap_to_leader === 0 ? '' : `vs ${lg.leader_name}`}
+              </div>
+            </div>
+          </div>
+          ${rivalsRows ? `<table class="rivals-table">
+            <thead>
+              <tr>
+                <th style="width:2.5rem">#</th>
+                <th>Manager</th>
+                <th class="right">Pts</th>
+                <th class="right">Gap</th>
+              </tr>
+            </thead>
+            <tbody>${rivalsRows}</tbody>
+          </table>` : ''}
+        </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
