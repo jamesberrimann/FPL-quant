@@ -94,6 +94,53 @@ async def get_squad_scores(entry_id: int) -> list[dict]:
     return results
 
 
+async def get_squad_gw_points(entry_id: int) -> dict:
+    from app.ingestion.fpl_client import get_gameweek_live, get_entry_picks
+
+    data = await get_bootstrap_static()
+    events = data["events"]
+
+    current_event = next((e for e in events if e["is_current"]), None)
+    last_finished = max((e for e in events if e["finished"]), key=lambda e: e["id"], default=None)
+
+    if current_event:
+        gameweek = current_event["id"]
+        is_live_gw = True
+    elif last_finished:
+        gameweek = last_finished["id"]
+        is_live_gw = False
+    else:
+        return {"gameweek": 0, "is_live_gw": False, "players": []}
+
+    picks_data = await get_entry_picks(entry_id, gameweek)
+    picks = picks_data["picks"]
+
+    live_data = await get_gameweek_live(gameweek)
+    live_by_id = {p["id"]: p for p in live_data["elements"]}
+    elements_by_id = {e["id"]: e for e in data["elements"]}
+
+    players = []
+    for pick in picks:
+        player_id = pick["element"]
+        element = elements_by_id.get(player_id, {})
+        stats = live_by_id.get(player_id, {}).get("stats", {})
+
+        minutes = stats.get("minutes", 0)
+        players.append({
+            "player_id": player_id,
+            "web_name": element.get("web_name", str(player_id)),
+            "points": stats.get("total_points", 0),
+            "minutes": minutes,
+            "has_played": minutes > 0,
+            "is_captain": pick["is_captain"],
+            "is_vice_captain": pick["is_vice_captain"],
+            "multiplier": pick["multiplier"],
+            "position_in_squad": pick["position"],
+        })
+
+    return {"gameweek": gameweek, "is_live_gw": is_live_gw, "players": players}
+
+
 async def get_squad_live_events(entry_id: int) -> list[dict]:
     from app.core.db import async_session_factory
     from app.ingestion.fpl_client import get_entry_picks

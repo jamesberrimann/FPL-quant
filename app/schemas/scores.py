@@ -34,3 +34,21 @@ class PlayerLiveEventOut(BaseModel):
 
 class SquadLiveEventsOut(BaseModel):
     events: list[PlayerLiveEventOut]
+
+
+class PlayerGWPointsOut(BaseModel):
+    player_id: int
+    web_name: str
+    points: int
+    minutes: int
+    has_played: bool
+    is_captain: bool
+    is_vice_captain: bool
+    multiplier: int
+    position_in_squad: int
+
+
+class SquadGWPointsOut(BaseModel):
+    gameweek: int
+    is_live_gw: bool
+    players: list[PlayerGWPointsOut]

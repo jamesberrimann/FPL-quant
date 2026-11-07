@@ -1,29 +1,38 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { colors, spacing, fontSize, fontWeight } from '../lib/theme';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
-  right?: React.ReactNode;
 }
 
-export function Header({ title, subtitle, right }: HeaderProps) {
+export function Header({ title, subtitle }: HeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{
-      paddingTop: insets.top + spacing.sm,
-      paddingBottom: spacing.lg,
-      paddingHorizontal: spacing.lg,
-      backgroundColor: colors.nav,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceBorder,
-    }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: subtitle ? 4 : 0 }}>
-            <View style={{ width: 4, height: 20, backgroundColor: colors.primary, borderRadius: 2 }} />
+    <View style={{ backgroundColor: colors.nav, borderBottomWidth: 1, borderBottomColor: 'rgba(251,191,36,0.18)' }}>
+      {/* Gold accent line across the top */}
+      <View style={{ height: 2, backgroundColor: colors.gold, opacity: 0.55 }} />
+      <View style={{
+        paddingTop: insets.top + spacing.sm,
+        paddingBottom: spacing.lg,
+        paddingHorizontal: spacing.lg,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              fontSize: 10,
+              fontWeight: fontWeight.bold,
+              color: colors.gold,
+              letterSpacing: 1.8,
+              marginBottom: 5,
+              opacity: 0.85,
+            }}>
+              FPL QUANT
+            </Text>
             <Text style={{
               fontSize: fontSize.xxl,
               fontWeight: fontWeight.black,
@@ -32,14 +41,37 @@ export function Header({ title, subtitle, right }: HeaderProps) {
             }}>
               {title}
             </Text>
+            {subtitle && (
+              <Text style={{
+                fontSize: fontSize.xs,
+                color: colors.textMuted,
+                fontWeight: fontWeight.semibold,
+                letterSpacing: 0.3,
+                marginTop: 3,
+              }}>
+                {subtitle}
+              </Text>
+            )}
           </View>
-          {subtitle && (
-            <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, fontWeight: fontWeight.semibold, letterSpacing: 0.3, paddingLeft: 12 }}>
-              {subtitle}
-            </Text>
-          )}
+
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            style={{
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)',
+              alignItems: 'center', justifyContent: 'center',
+              marginLeft: spacing.md,
+            }}
+          >
+            {Platform.OS === 'ios' ? (
+              <SymbolView name="gearshape.fill" size={16} tintColor={colors.textMuted} />
+            ) : (
+              <Text style={{ fontSize: 15 }}>⚙️</Text>
+            )}
+          </TouchableOpacity>
         </View>
-        {right && <View style={{ marginLeft: spacing.md }}>{right}</View>}
       </View>
     </View>
   );

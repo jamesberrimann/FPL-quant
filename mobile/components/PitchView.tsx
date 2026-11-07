@@ -119,8 +119,8 @@ function PitchLines({ w, h }: { w: number; h: number }) {
   );
 }
 
-function PlayerNode({ player, x, y, isCap, isVC }: {
-  player: any; x: number; y: number; isCap?: boolean; isVC?: boolean;
+function PlayerNode({ player, x, y, isCap, isVC, isTransferIn }: {
+  player: any; x: number; y: number; isCap?: boolean; isVC?: boolean; isTransferIn?: boolean;
 }) {
   const [fill, stroke] = teamColours(player);
   const label   = abbr(player.web_name);
@@ -157,6 +157,16 @@ function PlayerNode({ player, x, y, isCap, isVC }: {
             <Text style={{ fontSize: 7, fontWeight: fontWeight.black, color: '#fff' }}>V</Text>
           </View>
         )}
+        {isTransferIn && (
+          <View style={{
+            position: 'absolute', top: -5, left: -4,
+            width: 16, height: 16, borderRadius: 8,
+            backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#fff',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 6, fontWeight: fontWeight.black, color: '#fff' }}>IN</Text>
+          </View>
+        )}
       </View>
       <Text style={{
         fontSize: 8, fontWeight: fontWeight.bold, color: '#fff',
@@ -176,7 +186,7 @@ function PlayerNode({ player, x, y, isCap, isVC }: {
   );
 }
 
-export function PitchView({ players, capId, vcId }: { players: any[]; capId?: number; vcId?: number }) {
+export function PitchView({ players, capId, vcId, transferInIds }: { players: any[]; capId?: number; vcId?: number; transferInIds?: Set<number> }) {
   const { width: screenW } = useWindowDimensions();
   const pitchW = screenW - 32; // margin 16 each side
   const pitchH = pitchW * 1.5; // 2:3 aspect ratio
@@ -198,6 +208,7 @@ export function PitchView({ players, capId, vcId }: { players: any[]; capId?: nu
           y={(yPct / 100) * pitchH}
           isCap={p.id === capId}
           isVC={p.id === vcId}
+          isTransferIn={transferInIds?.has(p.id)}
         />
       );
     });
@@ -231,7 +242,7 @@ export function PitchView({ players, capId, vcId }: { players: any[]; capId?: nu
   );
 }
 
-export function BenchRow({ players }: { players: any[] }) {
+export function BenchRow({ players, transferInIds }: { players: any[]; transferInIds?: Set<number> }) {
   return (
     <View style={{
       flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center',
@@ -241,9 +252,22 @@ export function BenchRow({ players }: { players: any[] }) {
       {players.map(p => {
         const [fill, stroke] = teamColours(p);
         const fixture = p.next_fixture ?? null;
+        const isIn = transferInIds?.has(p.id);
         return (
           <View key={p.id} style={{ alignItems: 'center', gap: 3, opacity: 0.75 }}>
-            <Shirt fill={fill} stroke={stroke} label={abbr(p.web_name)} />
+            <View style={{ position: 'relative' }}>
+              <Shirt fill={fill} stroke={stroke} label={abbr(p.web_name)} />
+              {isIn && (
+                <View style={{
+                  position: 'absolute', top: -5, left: -4,
+                  width: 16, height: 16, borderRadius: 8,
+                  backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#fff',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 6, fontWeight: fontWeight.black, color: '#fff' }}>IN</Text>
+                </View>
+              )}
+            </View>
             <Text style={{ fontSize: 8, fontWeight: fontWeight.bold, color: '#fff', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
               {p.web_name}
             </Text>

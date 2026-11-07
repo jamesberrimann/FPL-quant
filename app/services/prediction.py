@@ -50,7 +50,7 @@ def _fixture_multiplier(opponent_strength: dict, position: Position) -> float:
         return min(float(opp_conceded) / _PL_AVG_GOALS, 2.0)
 
 
-def _split_base(player, stats, avg_min: float, opp_goals_scored_for_cs: float | None = None) -> tuple[float, float, float]:
+def _split_base(player, stats, avg_min: float, opp_goals_scored_for_cs: float | None = None, recent_gw_weight: float = 0.4) -> tuple[float, float, float]:
     """
     Returns (app_pts, offensive_pts, cs_pts) so the caller can apply the fixture
     multiplier only to offensive components while keeping CS independent.
@@ -67,10 +67,7 @@ def _split_base(player, stats, avg_min: float, opp_goals_scored_for_cs: float | 
 
     app_pts = 2.0 if avg_min >= 60 else 1.0
 
-    # Blend season-average xStats with the most-recent GW snapshot (when available).
-    # Weight: 60% season average + 40% last GW.
-    _SEASON_W = 0.6
-    _RECENT_W = 0.4
+    _season_w = 1.0 - recent_gw_weight
 
     season_xg = float(stats.expected_goals_per_90 or 0)
     season_xa = float(stats.expected_assists_per_90 or 0)
@@ -80,9 +77,9 @@ def _split_base(player, stats, avg_min: float, opp_goals_scored_for_cs: float | 
     xa_gw = getattr(stats, "xa_this_gw_per_90", None)
     xgc_gw = getattr(stats, "xgc_this_gw_per_90", None)
 
-    xg = _SEASON_W * season_xg + _RECENT_W * float(xg_gw) if xg_gw is not None else season_xg
-    xa = _SEASON_W * season_xa + _RECENT_W * float(xa_gw) if xa_gw is not None else season_xa
-    xgc = _SEASON_W * season_xgc + _RECENT_W * float(xgc_gw) if xgc_gw is not None else season_xgc
+    xg = _season_w * season_xg + recent_gw_weight * float(xg_gw) if xg_gw is not None else season_xg
+    xa = _season_w * season_xa + recent_gw_weight * float(xa_gw) if xa_gw is not None else season_xa
+    xgc = _season_w * season_xgc + recent_gw_weight * float(xgc_gw) if xgc_gw is not None else season_xgc
 
     # Offensive: goals, assists, and expected bonus from action-heavy contributions.
     # Bonus is scaled by fix_mult in predict_points (harder fixture → fewer goals → less bonus).
@@ -146,6 +143,8 @@ async def predict_points(
     fixture_from_gameweek: int | None = None,
     num_fixtures: int = 3,
     fixture_count_multipliers: dict[int, float] | None = None,
+    fix_mult_floor: float = 0.0,
+    recent_gw_weight: float = 0.4,
 ) -> list:
     """
     Returns list of (player, stats, predicted_pts_per_game) tuples.
@@ -176,13 +175,12 @@ async def predict_points(
     }
 
     result = []
+    season_w = 1.0 - recent_gw_weight
+
     for player, stats in rows:
         season_avg_min = float(stats.minutes) / max(gameweek, 1)
         if stats.minutes_this_gw is not None:
-            # 60% season average + 40% most-recent GW.
-            # Catches rotation changes and injury-return ramp-ups faster than
-            # season average alone, without letting a single anomalous GW dominate.
-            avg_min = 0.6 * season_avg_min + 0.4 * min(float(stats.minutes_this_gw), 90.0)
+            avg_min = season_w * season_avg_min + recent_gw_weight * min(float(stats.minutes_this_gw), 90.0)
         else:
             avg_min = season_avg_min
         opponent_strength = opponent_strength_by_team[player.team_id]
@@ -190,12 +188,13 @@ async def predict_points(
         app_pts, offensive_pts, cs_pts = _split_base(
             player, stats, avg_min,
             opp_goals_scored_for_cs=opponent_strength.get("opponent_avg_goals_scored"),
+            recent_gw_weight=recent_gw_weight,
         )
         if app_pts < 1e-9:
             result.append((player, stats, 0.0))
             continue
 
-        fix_mult = _fixture_multiplier(opponent_strength, player.position)
+        fix_mult = max(_fixture_multiplier(opponent_strength, player.position), fix_mult_floor)
 
         # Form as a short-term confidence weight, clamped to ±15% swing.
         # FPL form is a 4-GW rolling average — noisy enough that ±25% was

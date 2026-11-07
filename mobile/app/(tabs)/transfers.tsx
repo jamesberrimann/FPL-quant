@@ -2,6 +2,7 @@ import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { useEntryId } from '../../hooks/useEntryId';
 import { api } from '../../lib/api';
 import { colors, spacing, fontSize, fontWeight, radius } from '../../lib/theme';
@@ -132,6 +133,15 @@ export default function TransfersScreen() {
               {freeTx === 0 ? 'No transfer worth a 4pt hit right now.' : 'No upgrade clears the threshold right now.'}
             </Text>
           </View>
+        )}
+
+        {suggestions.length > 0 && (
+          <TouchableOpacity
+            onPress={() => router.push(`/squad-after-transfers?freeTx=${freeTx}`)}
+            style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.surfaceBorder }}
+          >
+            <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>View squad after these transfers</Text>
+          </TouchableOpacity>
         )}
 
         {suggestions.map((s: any, i: number) => <TransferCard key={i} s={s} i={i} />)}

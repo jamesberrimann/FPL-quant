@@ -40,7 +40,6 @@ def _patch_builder(monkeypatch, squad_by_budget: dict):
     monkeypatch.setattr("app.services.squad_builder.get_latest_stats", AsyncMock(return_value=rows))
     monkeypatch.setattr("app.services.squad_builder.filter_unavailable_players", lambda r: r)
     monkeypatch.setattr("app.services.squad_builder.filter_by_minimum_minutes", lambda r: r)
-    monkeypatch.setattr("app.services.squad_builder.filter_by_recent_minutes", AsyncMock(return_value=rows))
     monkeypatch.setattr("app.services.squad_builder.get_planning_gameweek", AsyncMock(return_value=5))
     monkeypatch.setattr("app.services.squad_builder.get_fixture_counts_in_gameweek_window",
                         AsyncMock(return_value={1: 5}))

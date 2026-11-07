@@ -7,7 +7,6 @@ from app.services.player_pool import (
     get_latest_stats,
     filter_unavailable_players,
     filter_by_minimum_minutes,
-    filter_by_recent_minutes,
 )
 from app.services.prediction import predict_points
 from app.services.optimizer import optimize_squad
@@ -23,20 +22,24 @@ _EXPECTED_FIXTURES_PER_WINDOW = _SQUAD_WINDOW_GAMEWEEKS  # baseline: 1 game/GW
 _CAPTAIN_SOFTMAX_T = 1.5
 
 
+_CAPTAIN_POOL_SIZE = 15  # only realistic captaincy candidates compete for the premium
+
+
 def _compute_captain_premiums(scored: list) -> dict[int, float]:
     """
-    Returns {player_id: captain_probability} via softmax over MID/FWD scores.
-
-    A player captained p fraction of weeks gains an expected p extra multiplier
-    (captain = 2× points = +1× their score). Concentrates premium on the top
-    asset rather than applying a flat per-position rate, so a £13m FWD is
-    valued correctly vs a £6.5m budget option.
+    Returns {player_id: captain_probability} via softmax over the top MID/FWD
+    scores. Restricting to the top N candidates prevents budget players from
+    diluting the premium that should concentrate on elite assets like Haaland.
     """
-    attacking = [
-        (player.id, sc)
-        for player, _, sc in scored
-        if player.position in (Position.MID, Position.FWD) and sc > 0
-    ]
+    attacking = sorted(
+        [
+            (player.id, sc)
+            for player, _, sc in scored
+            if player.position in (Position.MID, Position.FWD) and sc > 0
+        ],
+        key=lambda x: x[1],
+        reverse=True,
+    )[:_CAPTAIN_POOL_SIZE]
     if not attacking:
         return {}
     ids, scores = zip(*attacking)
@@ -55,7 +58,6 @@ async def build_optimal_squad(budget: float = 100.0):
         rows = await get_latest_stats(db, gameweek)
         rows = filter_unavailable_players(rows)
         rows = filter_by_minimum_minutes(rows)
-        rows = await filter_by_recent_minutes(rows, gameweek, min_minutes=1)
 
         team_ids = {player.team_id for player, _ in rows}
         fixture_counts = await get_fixture_counts_in_gameweek_window(
@@ -63,10 +65,13 @@ async def build_optimal_squad(budget: float = 100.0):
         )
 
         # 5-GW window: squad is held for months, not just next week.
-        # Smooths temporary hard patches that shouldn't tank a good player's value.
+        # fix_mult_floor=0.7: hard fixtures shouldn't write off a premium player.
+        # recent_gw_weight=0.1: one hot/cold game is noise over a 5-GW horizon;
+        # season xStats are a much better signal than last week's performance.
         scored = await predict_points(
             rows, db, gameweek=gameweek,
             fixture_from_gameweek=planning_gameweek, num_fixtures=5,
+            fix_mult_floor=0.7, recent_gw_weight=0.1,
         )
 
         # Scale predicted score by fixture count over the window so DGW teams
@@ -118,7 +123,6 @@ async def get_budget_sensitivity(
         rows = await get_latest_stats(db, gameweek)
         rows = filter_unavailable_players(rows)
         rows = filter_by_minimum_minutes(rows)
-        rows = await filter_by_recent_minutes(rows, gameweek, min_minutes=1)
 
         team_ids = {player.team_id for player, _ in rows}
         fixture_counts = await get_fixture_counts_in_gameweek_window(
@@ -127,6 +131,7 @@ async def get_budget_sensitivity(
         scored = await predict_points(
             rows, db, gameweek=gameweek,
             fixture_from_gameweek=planning_gameweek, num_fixtures=5,
+            fix_mult_floor=0.7, recent_gw_weight=0.1,
         )
         captain_premiums = _compute_captain_premiums(scored)
         scored = [

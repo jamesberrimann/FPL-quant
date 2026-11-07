@@ -28,11 +28,7 @@ async def test_build_optimal_squad_wires_pipeline_correctly(monkeypatch):
         call_log.append(("filter_by_minimum_minutes", rows))
         return rows
 
-    async def fake_filter_by_recent_minutes(rows, gameweek, min_minutes=60):
-        call_log.append(("filter_by_recent_minutes", rows, gameweek))
-        return rows
-
-    async def fake_predict_points(rows, db, gameweek, fixture_from_gameweek=None, num_fixtures=3, fixture_count_multipliers=None):
+    async def fake_predict_points(rows, db, gameweek, fixture_from_gameweek=None, num_fixtures=3, fixture_count_multipliers=None, fix_mult_floor=0.0, recent_gw_weight=0.4):
         call_log.append(("predict_points", rows, gameweek))
         return [(p1, s1, 8.0), (p2, s2, 4.0)]
 
@@ -50,7 +46,6 @@ async def test_build_optimal_squad_wires_pipeline_correctly(monkeypatch):
     monkeypatch.setattr("app.services.squad_builder.get_bootstrap_static", fake_get_bootstrap_static)
     monkeypatch.setattr("app.services.squad_builder.get_latest_stats", fake_get_latest_stats)
     monkeypatch.setattr("app.services.squad_builder.filter_by_minimum_minutes", fake_filter_by_minimum_minutes)
-    monkeypatch.setattr("app.services.squad_builder.filter_by_recent_minutes", fake_filter_by_recent_minutes)
     monkeypatch.setattr("app.services.squad_builder.predict_points", fake_predict_points)
     monkeypatch.setattr("app.services.squad_builder.get_planning_gameweek", fake_get_planning_gameweek)
     monkeypatch.setattr("app.services.squad_builder.get_fixture_counts_in_gameweek_window", fake_get_fixture_counts_in_gameweek_window)
@@ -64,22 +59,20 @@ async def test_build_optimal_squad_wires_pipeline_correctly(monkeypatch):
     assert steps == [
         "get_latest_stats",
         "filter_by_minimum_minutes",
-        "filter_by_recent_minutes",
         "predict_points",
         "optimize_squad",
     ]
 
     assert call_log[0][1] == 4
     assert call_log[2][2] == 4
-    assert call_log[3][2] == 4
-    assert call_log[4][2] == 95.0
+    assert call_log[3][2] == 95.0
 
     # Verify scoring: predicted_score × (fixture_count / 5) × (1 + captain_premium)
     #   fixture_count = 5 → scale = 5/5 = 1.0
     #   MagicMock().position != Position.MID/FWD → _compute_captain_premiums returns {} → premium = 0.0
     # p1: 8.0 × 1.0 × 1.0 = 8.0
     # p2: 4.0 × 1.0 × 1.0 = 4.0
-    scored_for_optimizer = call_log[4][1]
+    scored_for_optimizer = call_log[3][1]
     assert scored_for_optimizer[0][2] == pytest.approx(8.0)
     assert scored_for_optimizer[1][2] == pytest.approx(4.0)
 

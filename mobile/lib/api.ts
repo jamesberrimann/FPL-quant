@@ -42,4 +42,6 @@ export const api = {
   rateSquad:    (id: string) => request<any>(`/api/v1/rate-squad?entry_id=${id}`),
   bestSquad:    (budget: number) => request<any>(`/api/v1/optimize-squad?budget=${budget}`),
   fhSquad:      (id: string, gw: number) => request<any>(`/api/v1/fh-squad?entry_id=${id}&gameweek=${gw}`),
+  squadGwPoints: (id: string) => request<any>(`/api/v1/squad-gw-points?entry_id=${id}`),
+  miniLeague:    (id: string) => request<any>(`/api/v1/mini-league?entry_id=${id}`),
 };

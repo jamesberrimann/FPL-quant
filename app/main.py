@@ -29,11 +29,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FPL Decision-Support Tool", lifespan=lifespan)
 
-# Allow any origin so the API remains usable if the frontend is ever served
-# separately (e.g. during local development or a future deployment split).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
     allow_methods=["GET"],
     allow_headers=["X-API-Key"],
 )

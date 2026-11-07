@@ -6,6 +6,7 @@ from app.ingestion.fpl_client import get_bootstrap_static, get_entry_picks
 from app.models.player import Position
 from app.services.player_pool import get_latest_stats, filter_unavailable_players, filter_by_minimum_minutes, filter_by_recent_minutes, get_prev_gw_prices, get_prev_gw_ownership
 from app.services.prediction import predict_points, compute_prediction_components
+from app.services.lineup import pick_best_starting_xi
 from app.services.rotation_risk import get_rotation_risk_scores, ROTATION_RISK_THRESHOLD
 from app.services.fixtures import (
     get_fixture_timing_signal,
@@ -52,6 +53,10 @@ _MAX_COMBO_SIZE = 3
 # upcoming run). Suppresses marginal timing-bad transfers; large upgrades
 # still surface but with honest discounted improvement.
 _TIMING_DISCOUNT = 0.70
+# A benched player contributes almost nothing — ~15% chance of an auto-sub.
+# Using their full predicted score would hide transfer opportunities like
+# "sell Bruno who's on the bench" because the improvement gap looks tiny.
+_BENCH_SCORE_WEIGHT = 0.15
 
 
 def improvement_drivers(out_components: dict, in_components: dict) -> list[str]:
@@ -147,6 +152,24 @@ async def suggest_transfers(
 
         my_players = [
             (p, s, sc) for p, s, sc in scored_all if p.id in my_element_ids
+        ]
+
+        # Discount bench players — their real contribution is near zero.
+        # pick_best_starting_xi uses the same predicted scores, so we reuse it
+        # rather than duplicating formation logic here.
+        bench_ids: set[int] = set()
+        if my_players:
+            try:
+                lineup_result = pick_best_starting_xi(my_players)
+                bench_ids = {p.id for p, _, _ in lineup_result["bench_outfield"]}
+                if lineup_result["bench_gk"]:
+                    bench_ids.add(lineup_result["bench_gk"][0].id)
+            except (TypeError, KeyError):
+                pass
+
+        my_players = [
+            (p, s, sc * _BENCH_SCORE_WEIGHT if p.id in bench_ids else sc)
+            for p, s, sc in my_players
         ]
 
         team_counts: dict[int, int] = {}

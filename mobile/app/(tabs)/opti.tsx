@@ -253,39 +253,121 @@ export default function OptiScreen() {
           );
         })()}
 
-        {/* Player list */}
-        {displayXi.length > 0 && (
-          <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
-            {['GKP', 'DEF', 'MID', 'FWD'].map(pos => {
-              const all = mode === 'wildcard' ? (bestData?.players ?? []) : (fhData?.players ?? []);
-              const posPlayers = (all as any[]).filter(p => p.position === pos).sort((a, b) => (b.projected_pts ?? b.score ?? 0) - (a.projected_pts ?? a.score ?? 0));
-              if (!posPlayers.length) return null;
-              return (
-                <View key={pos}>
+        {/* Insights */}
+        {displayXi.length > 0 && (() => {
+          const allP: any[] = mode === 'wildcard' ? (bestData?.players ?? []) : (fhData?.players ?? []);
+          const starterIds = new Set([...displayXi, ...displayBench].map((p: any) => p.id));
+          const starters = allP.filter(p => starterIds.has(p.id));
+
+          if (mode === 'wildcard') {
+            // Position strength: avg percentile per line
+            const posRows = ['GKP', 'DEF', 'MID', 'FWD'].map(pos => {
+              const pp = starters.filter(p => p.position === pos);
+              const avg = pp.length ? pp.reduce((s, p) => s + (p.percentile ?? 0), 0) / pp.length : 0;
+              return { pos, avg, count: pp.length };
+            }).filter(r => r.count > 0);
+
+            // Best value: score per £m (starters only, sort descending)
+            const byValue = [...starters]
+              .filter(p => p.price && p.score)
+              .sort((a, b) => (b.score / b.price) - (a.score / a.price))
+              .slice(0, 3);
+
+            return (
+              <View style={{ gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md }}>
+                {/* Position strength */}
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
                   <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs }}>
-                    <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7 }}>{pos}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7 }}>LINE STRENGTH</Text>
+                    <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4, lineHeight: 16 }}>How each line ranks vs all players at that position. Higher is better.</Text>
                   </View>
-                  {posPlayers.map((p: any, i: number) => (
-                    <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceBorder }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
-                        <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>
-                          {p.team_short_name}{(p.next_fixture || p.fixture_label) ? ` · ${p.next_fixture ?? p.fixture_label}` : ''}
-                        </Text>
+                  {posRows.map((r, i) => {
+                    const pct = Math.round(r.avg);
+                    const barColor = pct >= 70 ? colors.success : pct >= 50 ? colors.gold : colors.error;
+                    return (
+                      <View key={r.pos} style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceBorder }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                          <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, width: 36 }}>{r.pos}</Text>
+                          <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                            <View style={{ width: `${pct}%`, height: '100%', backgroundColor: barColor, borderRadius: 3 }} />
+                          </View>
+                          <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.black, color: barColor, width: 36, textAlign: 'right' }}>{pct}th</Text>
+                        </View>
                       </View>
-                      <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                        {mode === 'freehit' && p.projected_pts != null && (
-                          <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.success }}>~{p.projected_pts?.toFixed(1)} pts</Text>
-                        )}
-                        <Text style={{ fontSize: fontSize.xs, color: colors.textMuted }}>£{p.price?.toFixed(1)}m</Text>
+                    );
+                  })}
+                </View>
+
+                {/* Best value picks */}
+                {byValue.length > 0 && (
+                  <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
+                    <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs }}>
+                      <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7 }}>BEST VALUE</Text>
+                    </View>
+                    {byValue.map((p: any, i: number) => (
+                      <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceBorder }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{p.web_name}</Text>
+                          <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>{p.position} · {p.team_short_name} · £{p.price?.toFixed(1)}m</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.gold }}>{(p.score / p.price).toFixed(1)}</Text>
+                          <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 1 }}>score/£m</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          }
+
+          // Free Hit: projected points breakdown by position
+          const posBreakdown = ['GKP', 'DEF', 'MID', 'FWD'].map(pos => {
+            const pp = displayXi.filter((p: any) => p.position === pos);
+            const ppFull = pp.map((p: any) => allP.find((a: any) => a.id === p.id)).filter(Boolean);
+            const total = ppFull.reduce((s: number, p: any) => s + (p?.projected_pts ?? 0), 0);
+            return { pos, total, count: pp.length };
+          }).filter(r => r.count > 0);
+
+          const totalProjected = posBreakdown.reduce((s, r) => s + r.total, 0);
+          const capPlayer = allP.find((p: any) => p.id === capId);
+
+          return (
+            <View style={{ gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md }}>
+              <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden' }}>
+                <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs }}>
+                  <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.7 }}>POINTS BREAKDOWN</Text>
+                </View>
+                {posBreakdown.map((r, i) => {
+                  const share = totalProjected > 0 ? (r.total / totalProjected) * 100 : 0;
+                  return (
+                    <View key={r.pos} style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceBorder }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, width: 36 }}>{r.pos}</Text>
+                        <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                          <View style={{ width: `${share}%`, height: '100%', backgroundColor: colors.success, borderRadius: 3 }} />
+                        </View>
+                        <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.black, color: colors.success, width: 44, textAlign: 'right' }}>~{r.total.toFixed(1)}</Text>
                       </View>
                     </View>
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-        )}
+                  );
+                })}
+                {capPlayer && (
+                  <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceBorder, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 9, fontWeight: fontWeight.black, color: '#1a1a1a' }}>C</Text>
+                      </View>
+                      <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text }}>{capPlayer.web_name}</Text>
+                    </View>
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.black, color: colors.gold }}>~{((capPlayer.projected_pts ?? 0) * 2).toFixed(1)} pts</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          );
+        })()}
       </ScrollView>
     </View>
   );
